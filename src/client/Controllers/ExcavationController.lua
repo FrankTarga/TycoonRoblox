@@ -135,3 +135,4 @@ function ExcavationController.init()
 end
 
 return ExcavationController
+

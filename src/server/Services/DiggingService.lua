@@ -427,3 +427,4 @@ function DiggingService.init()
 end
 
 return DiggingService
+

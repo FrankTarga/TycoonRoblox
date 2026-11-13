@@ -104,12 +104,15 @@ end)
 -------------------------------------------------------------------------
 local Controllers = script.Parent:WaitForChild("Controllers")
 
+local CarryController = require(Controllers:WaitForChild("CarryController"))
+local InventoryController = require(Controllers:WaitForChild("InventoryController"))
 local ExcavationController = require(Controllers:WaitForChild("ExcavationController"))
+
+CarryController.init()
+InventoryController.init()
 ExcavationController.init()
 
 -- Controllers to be hooked in future phases:
--- local InventoryController  = require(Controllers.InventoryController)
--- local CarryController      = require(Controllers.CarryController)
 -- local MachineController    = require(Controllers.MachineController)
 -- local UIController         = require(Controllers.UIController)
 

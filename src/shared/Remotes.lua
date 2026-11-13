@@ -19,6 +19,7 @@ Remotes.Events = {
 	-- Carrying & Placement
 	RequestCarryItem  = "RequestCarryItem",   -- Client → Server
 	RequestPlaceItem  = "RequestPlaceItem",   -- Client → Server
+	CarryStateChanged = "CarryStateChanged",  -- Server → Client
 
 	-- Cleaning
 	RequestCleanFossil = "RequestCleanFossil", -- Client → Server
