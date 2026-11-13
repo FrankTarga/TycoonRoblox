@@ -80,11 +80,8 @@ print("[Server] Services initialized.")
 local function onPlayerAdded(player: Player)
 	print("[Server] Player joined:", player.Name, "(", player.UserId, ")")
 
-	-- Initialize player session data (Phase 9 will load from DataStore)
-	local data = DataService.initPlayerData(player)
-
-	-- TODO: DataService:LoadPlayerData(player.UserId)
-	-- TODO: PlotService:InitializePlot(player)
+	-- Load player session data from DataStore (migrated & validated)
+	local data = DataService.loadPlayerData(player.UserId)
 
 	-- Send initial data to client
 	local playerDataLoaded = remoteEventsFolder:FindFirstChild("PlayerDataLoaded")
@@ -98,11 +95,11 @@ end
 local function onPlayerRemoving(player: Player)
 	print("[Server] Player leaving:", player.Name, "(", player.UserId, ")")
 
-	-- TODO: DataService:SavePlayerData(player.UserId, DataService.getPlayerData(player.UserId))
-
+	-- Save player progression on disconnect
+	DataService.savePlayerData(player.UserId)
 	DataService.removePlayerData(player.UserId)
 
-	print("[Server] Player data cleaned up:", player.Name)
+	print("[Server] Player data saved & cleaned up:", player.Name)
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
@@ -135,14 +132,7 @@ end
 -------------------------------------------------------------------------
 game:BindToClose(function()
 	print("[Server] Server shutting down — saving all player data...")
-
-	for userId, data in DataService.getAllPlayerData() do
-		local player = Players:GetPlayerByUserId(userId)
-		local playerName = if player then player.Name else tostring(userId)
-		-- TODO: DataService:SavePlayerData(userId, data)
-		print("[Server] Saved data for:", playerName)
-	end
-
+	DataService.saveAllPlayers()
 	print("[Server] Shutdown complete.")
 end)
 

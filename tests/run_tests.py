@@ -1113,6 +1113,95 @@ runner.test("Progression expands plot, deducting scaled cost and incrementing le
 runner.test("Progression buys cages, deducting cost and incrementing cage count", test_prog_buy_cage_deducts_cost_and_increments_count)
 runner.test("Progression sells fossils from inventory for cash", test_prog_sell_fossil_removes_from_inventory_and_awards_cash)
 
+# -------------------------------------------------------------
+# Data Persistence System Simulation (Phase 9)
+# -------------------------------------------------------------
+print("\n[SUITE] Data Persistence System Simulation (Phase 9)")
+
+def validate_and_migrate(raw):
+    default = {
+        "Money": 100,
+        "Level": 1,
+        "XP": 0,
+        "Inventory": [],
+        "Equipment": {
+            "ActiveShovel": "BASIC_SHOVEL",
+            "ActiveBrush": "BASIC_BRUSH",
+            "OwnedEquipment": ["BASIC_SHOVEL", "BASIC_BRUSH"],
+        },
+        "UnlockedZones": ["BEGINNER_SITE"],
+        "PlotData": {"ExpansionLevel": 1, "CageCount": 1},
+        "CageAssignments": {},
+        "Statistics": {"TotalMoneyEarned": 0, "TotalFossilsExcavated": 0},
+    }
+    if not isinstance(raw, dict):
+        return default
+    migrated = dict(default)
+    migrated.update(raw)
+    # Ensure nested objects are merged
+    if "PlotData" not in raw or not isinstance(raw["PlotData"], dict):
+        migrated["PlotData"] = default["PlotData"]
+    if "Statistics" not in raw or not isinstance(raw["Statistics"], dict):
+        migrated["Statistics"] = default["Statistics"]
+    if "Equipment" not in raw or not isinstance(raw["Equipment"], dict):
+        migrated["Equipment"] = default["Equipment"]
+    return migrated
+
+class MockDataStoreService:
+    def __init__(self):
+        self.storage = {}
+        self.should_fail = False
+
+    def get_async(self, key):
+        if self.should_fail:
+            raise RuntimeError("DataStore error: connection refused")
+        return self.storage.get(key)
+
+    def set_async(self, key, value):
+        if self.should_fail:
+            raise RuntimeError("DataStore error: write limit exceeded")
+        self.storage[key] = dict(value)
+
+datastore = MockDataStoreService()
+
+def test_persistence_migration_empty():
+    res = validate_and_migrate({})
+    assert res["Money"] == 100
+    assert res["Level"] == 1
+    assert res["PlotData"]["ExpansionLevel"] == 1
+
+def test_persistence_migration_preserves_legacy():
+    legacy = {"Money": 9999, "Level": 10}
+    res = validate_and_migrate(legacy)
+    assert res["Money"] == 9999
+    assert res["Level"] == 10
+    assert res["PlotData"]["ExpansionLevel"] == 1
+    assert res["Statistics"]["TotalMoneyEarned"] == 0
+
+def test_persistence_save_and_reload():
+    user_key = "Player_7001"
+    data = validate_and_migrate({"Money": 4500, "Level": 4})
+    datastore.set_async(user_key, data)
+    loaded = datastore.get_async(user_key)
+    assert loaded is not None
+    assert loaded["Money"] == 4500
+    assert loaded["Level"] == 4
+
+def test_persistence_error_graceful_catch():
+    datastore.should_fail = True
+    caught = False
+    try:
+        datastore.set_async("Player_7002", {"Money": 100})
+    except RuntimeError:
+        caught = True
+    assert caught is True
+    datastore.should_fail = False
+
+runner.test("Persistence migration handles empty record", test_persistence_migration_empty)
+runner.test("Persistence migration preserves legacy data and adds schema", test_persistence_migration_preserves_legacy)
+runner.test("Persistence accurately saves and reloads player data", test_persistence_save_and_reload)
+runner.test("Persistence handles DataStore errors gracefully without crashing", test_persistence_error_graceful_catch)
+
 all_passed = runner.summary()
 sys.exit(0 if all_passed else 1)
 

@@ -37,6 +37,7 @@ local function runAllSuites()
 	local incubatorSpec     = require(TestsFolder:WaitForChild("Incubator.spec"))
 	local cageSpec          = require(TestsFolder:WaitForChild("Cage.spec"))
 	local progressionSpec   = require(TestsFolder:WaitForChild("Progression.spec"))
+	local persistenceSpec   = require(TestsFolder:WaitForChild("Persistence.spec"))
 
 	TestFramework.clear()
 
@@ -48,6 +49,7 @@ local function runAllSuites()
 	incubatorSpec(CarryingService, IncubatorService)
 	cageSpec(CarryingService, CageService)
 	progressionSpec(ProgressionService)
+	persistenceSpec()
 
 	local results = TestFramework.runAll()
 

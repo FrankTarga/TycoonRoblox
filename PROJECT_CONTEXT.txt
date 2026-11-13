@@ -850,7 +850,7 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
 
 ## 30. CURRENT PROJECT STATUS
 
-**Development stage:** Phase 8 — Economy and Progression (Completed).
+**Development stage:** Phase 9 — Persistence (Completed).
 
 **Completed phases:**
 - **Phase 1 — Project Structure:** Folder architecture, shared configurations (Rarities, Fossils, Dinosaurs, Zones, Economy, Machines, Equipment), shared modules (Types, ItemUtils, Remotes), server bootstrap (`Main.server.lua`), client bootstrap (`Main.client.lua`), and service stubs.
@@ -873,9 +873,11 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
 - **Phase 8 — Economy and Progression (TDD):**
   - Unit test specifications (`Progression.spec.lua` and CLI test simulation suite in `tests/run_tests.py`).
   - Authoritative Progression Service (`ProgressionService.lua`): handles tool store purchases (`Iron Shovel`, `Golden Shovel`, `Fine Brush`, `Diamond Brush`), validates level requirements and funds, manages equipping, zone unlock progression (`Desert Canyon`), plot expansion scaling, additional cage purchases, and fossil selling for cash.
-  - Configurations updated: `EquipmentConfig.lua` (tiers 1-3 for shovels and brushes) and `ZoneConfig.lua` (`Desert Canyon`).
-  - Remotes added for client-server progression actions.
-  - `Main.server.lua` and `TestRunner.server.lua` updated.
+- **Phase 9 — Persistence (TDD):**
+  - Unit test specifications (`Persistence.spec.lua` and CLI test simulation suite in `tests/run_tests.py`).
+  - Authoritative DataService upgraded with DataStoreService persistence: safe `GetAsync` and `SetAsync` calls wrapped in `pcall` with retry logic, automatic schema migration and fallback handling for legacy/missing keys, auto-save loop (every 300s), auto-save on `PlayerRemoving`, server shutdown handling on `BindToClose`, and mock injection for offline tests.
+  - `Main.server.lua` updated with authoritative player load and save hooks.
+  - `TestRunner.server.lua` updated with `persistenceSpec`.
 
 **Current Explorer hierarchy:**
 ```
@@ -901,6 +903,7 @@ ReplicatedStorage/
     Incubator.spec.lua
     Cage.spec.lua
     Progression.spec.lua
+    Persistence.spec.lua
   Remotes.lua
   RemoteEvents/
     RequestExcavation
@@ -977,7 +980,7 @@ Workspace/
 ```
 
 **Implemented systems:**
-1. **DataService:** In-memory session cache (`getPlayerData`, `setPlayerData`, `initPlayerData`, `removePlayerData`) providing central authoritative data access across services.
+1. **DataService:** Central session cache with DataStoreService persistence, automatic schema validation and migration, retry logic, and mock injection.
 2. **InventoryService:** Authoritative inventory manipulation (`addItem`, `removeItem`, `getInventory`, `getItem`, `hasItem`), broadcasting updates to clients via `InventoryUpdated`.
 3. **DiggingService:** Authoritative excavation handling (distance, zone unlock, shovel speed/luck, cooldowns, weighted rolls, XP awards, auto-provisioned dig spot).
 4. **CarryingService:** Authoritative carrying and placement management (hand attachment, ownership checks, decoupled inventory retention, placement validation).
@@ -987,9 +990,9 @@ Workspace/
 8. **CageService:** Authoritative dinosaur cage management and passive income system (placement validation, dinosaur consumption, passive income generation, income capping, authoritative collection into money balance, dinosaur retrieval, auto-provisioned cage).
 9. **ProgressionService:** Authoritative economy store, equipment purchasing and equipping, zone unlocks, plot expansions, cage purchases, and fossil selling.
 10. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`, `MachineController`, `CageController`.
-11. **TDD Test Suite:** Automated unit tests covering all 8 phases (57 tests), executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
+11. **TDD Test Suite:** Automated unit tests covering all 9 phases (61 tests), executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
 
-**Next recommended task:** Phase 9 — Persistence.
+**Next recommended task:** Phase 10 — Expansion and Polish.
 
 ---
 
