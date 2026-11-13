@@ -542,6 +542,177 @@ runner.test("Extractor rejects DNA collection when machine is Idle", test_extrac
 runner.test("Collecting DNA adds it to inventory, resets machine to Idle, and awards 15 XP", test_extractor_collect_dna_adds_to_inventory_resets_machine_awards_xp)
 runner.test("Collecting DNA twice from same extraction rejected", test_extractor_no_double_collect)
 
+# -------------------------------------------------------------
+# Dinosaur Incubator System Simulation (Phase 6)
+# -------------------------------------------------------------
+print("\n[SUITE] Dinosaur Incubator System Simulation (Phase 6)")
+
+class MockIncubator:
+    def __init__(self, srv):
+        self.server = srv
+        self.states = {}
+        self.player_xp = {}
+
+    def _get_state(self, user_id):
+        if user_id not in self.states:
+            self.reset_machine(user_id)
+        return self.states[user_id]
+
+    def reset_machine(self, user_id):
+        self.states[user_id] = {
+            "state": IDLE,
+            "input_dino_id": None,
+            "input_rarity": None,
+            "input_quality": None,
+        }
+
+    def insert_item(self, user_id):
+        item = self.server.get_carried_item(user_id)
+        if not item:
+            return False, "No item is being carried"
+        if item["ItemType"] != "DNA":
+            return False, "Incubator only accepts DNA items"
+        s = self._get_state(user_id)
+        if s["state"] != IDLE:
+            return False, "Machine is not Idle"
+        # Consume from inventory & carrying
+        self.server.remove_item(user_id, item["ItemUID"])
+        self.server.carried_items.pop(user_id, None)
+        s["state"] = PROCESSING
+        s["input_dino_id"] = item["DinosaurID"]
+        s["input_rarity"] = item["Rarity"]
+        s["input_quality"] = item.get("Quality", 80)
+        return True, "Processing started"
+
+    def force_complete(self, user_id):
+        s = self._get_state(user_id)
+        if s["state"] != PROCESSING:
+            return False, "Machine is not processing"
+        dino = {
+            "ItemUID": str(uuid.uuid4()),
+            "ItemType": "Dinosaur",
+            "ConfigID": s["input_dino_id"],
+            "DinosaurID": s["input_dino_id"],
+            "Rarity": s["input_rarity"],
+            "Quality": s["input_quality"],
+            "IsCleaned": False,
+            "ObtainedAt": int(time.time()),
+        }
+        # Auto-collect to inventory
+        self.server.add_item(user_id, dino)
+        self.player_xp[user_id] = self.player_xp.get(user_id, 0) + 20
+        self.reset_machine(user_id)
+        return True, dino
+
+incubator = MockIncubator(server)
+
+def test_incubator_reject_no_item():
+    success, reason = incubator.insert_item(4001)
+    assert success is False
+    assert reason == "No item is being carried"
+
+def test_incubator_reject_uncleaned_fossil():
+    fossil = create_fossil_item("TREX_TOOTH")
+    server.add_item(4002, fossil)
+    server.set_carried_item(4002, fossil["ItemUID"])
+    success, reason = incubator.insert_item(4002)
+    assert success is False
+    assert reason == "Incubator only accepts DNA items"
+    # Fossil remains safe in inventory
+    assert len(server.get_inventory(4002)) == 1
+
+def test_incubator_reject_cleaned_fossil():
+    fossil = create_fossil_item("TREX_TOOTH")
+    fossil["IsCleaned"] = True
+    server.add_item(4003, fossil)
+    server.set_carried_item(4003, fossil["ItemUID"])
+    success, reason = incubator.insert_item(4003)
+    assert success is False
+    assert reason == "Incubator only accepts DNA items"
+
+def test_incubator_reject_dinosaur_item():
+    fossil = create_fossil_item("TREX_TOOTH")
+    dna = create_dna_item(fossil)
+    dino = create_dinosaur_item(dna)
+    server.add_item(4004, dino)
+    server.set_carried_item(4004, dino["ItemUID"])
+    success, reason = incubator.insert_item(4004)
+    assert success is False
+    assert reason == "Incubator only accepts DNA items"
+
+def test_incubator_accept_dna_and_consume():
+    fossil = create_fossil_item("TREX_TOOTH")
+    dna = create_dna_item(fossil)
+    server.add_item(4005, dna)
+    server.set_carried_item(4005, dna["ItemUID"])
+    success, _ = incubator.insert_item(4005)
+    assert success is True
+    # DNA consumed from inventory & carried
+    assert len(server.get_inventory(4005)) == 0
+    assert server.is_carrying(4005) is False
+    # Machine is Processing
+    assert incubator._get_state(4005)["state"] == PROCESSING
+
+def test_incubator_reject_second_insertion_while_processing():
+    fossil = create_fossil_item("TREX_TOOTH")
+    dna2 = create_dna_item(fossil)
+    server.add_item(4005, dna2)
+    server.set_carried_item(4005, dna2["ItemUID"])
+    success, reason = incubator.insert_item(4005)
+    assert success is False
+    assert reason == "Machine is not Idle"
+
+def test_incubator_force_complete_idle_is_noop():
+    # Calling force_complete when Idle is safe no-op
+    success, reason = incubator.force_complete(4006)
+    assert success is False
+    assert reason == "Machine is not processing"
+    assert incubator._get_state(4006)["state"] == IDLE
+
+def test_incubator_force_complete_autocollects_dinosaur_resets_idle_awards_20_xp():
+    # Clean user 4005 leftover dna2 from the rejected second insertion test
+    server.inventories.pop(4005, None)
+    success, dino = incubator.force_complete(4005)
+    assert success is True
+    assert dino["ItemType"] == "Dinosaur"
+    assert dino["DinosaurID"] == "TREX"
+    assert dino["Rarity"] == "Common"
+    # Auto-collected directly into inventory
+    inv = server.get_inventory(4005)
+    assert len(inv) == 1
+    assert inv[0]["ItemType"] == "Dinosaur"
+    assert inv[0]["DinosaurID"] == "TREX"
+    # Machine reset to Idle
+    assert incubator._get_state(4005)["state"] == IDLE
+    # 20 XP awarded
+    assert incubator.player_xp[4005] == 20
+
+def test_incubator_second_incubation_allowed():
+    # User 4005 can now incubate a second DNA
+    fossil = create_fossil_item("TREX_TOOTH")
+    dna = create_dna_item(fossil)
+    server.add_item(4005, dna)
+    server.set_carried_item(4005, dna["ItemUID"])
+    success, _ = incubator.insert_item(4005)
+    assert success is True
+    assert incubator._get_state(4005)["state"] == PROCESSING
+    success, dino2 = incubator.force_complete(4005)
+    assert success is True
+    # Now user has 2 dinosaurs in inventory
+    inv = server.get_inventory(4005)
+    assert len(inv) == 2
+    assert incubator.player_xp[4005] == 40  # 20 + 20
+
+runner.test("Incubator rejects when not carrying anything", test_incubator_reject_no_item)
+runner.test("Incubator rejects uncleaned fossil (fossil stays in inventory)", test_incubator_reject_uncleaned_fossil)
+runner.test("Incubator rejects cleaned fossil (wrong item type)", test_incubator_reject_cleaned_fossil)
+runner.test("Incubator rejects dinosaur item (wrong item type)", test_incubator_reject_dinosaur_item)
+runner.test("Incubator accepts DNA, consumes it from inventory and carrying state", test_incubator_accept_dna_and_consume)
+runner.test("Incubator rejects second insertion while Processing", test_incubator_reject_second_insertion_while_processing)
+runner.test("Incubator force_complete while Idle is safe no-op", test_incubator_force_complete_idle_is_noop)
+runner.test("Incubator auto-collects dinosaur to inventory, resets to Idle, and awards 20 XP", test_incubator_force_complete_autocollects_dinosaur_resets_idle_awards_20_xp)
+runner.test("Incubator allows a second incubation after the first completes", test_incubator_second_incubation_allowed)
+
 all_passed = runner.summary()
 sys.exit(0 if all_passed else 1)
 

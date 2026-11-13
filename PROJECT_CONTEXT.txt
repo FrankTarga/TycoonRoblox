@@ -833,7 +833,7 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
 
 ## 30. CURRENT PROJECT STATUS
 
-**Development stage:** Phase 5 — DNA Extractor (Completed).
+**Development stage:** Phase 6 — Dinosaur Incubator (Completed).
 
 **Completed phases:**
 - **Phase 1 — Project Structure:** Folder architecture, shared configurations (Rarities, Fossils, Dinosaurs, Zones, Economy, Machines, Equipment), shared modules (Types, ItemUtils, Remotes), server bootstrap (`Main.server.lua`), client bootstrap (`Main.client.lua`), and service stubs.
@@ -847,9 +847,12 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
   - Unit test specifications (`DNAExtractor.spec.lua` and CLI test simulation suite in `tests/run_tests.py`).
   - Authoritative DNA Extractor Service (`DNAExtractorService.lua`): per-player state machine (Idle → Processing → OutputReady → Idle), validates player is carrying a cleaned fossil, consumes the fossil from inventory on insertion, processes extraction via timer (`MachineConfig.ExtractionTime`), generates a DNA item from `DinosaurID` and `Rarity` of the input fossil, awards `EconomyConfig.XPPerExtraction` (15 XP) on collection, manual output collection only (`AutoCollectOutput = false`), test hook `forceCompleteProcessing(userId)`, and auto-provisions `Workspace.Machines.DNAExtractorMachine`.
   - Machine Controller (`MachineController.lua`): handles `ExtractorInsertPrompt` and `ExtractorCollectPrompt` ProximityPrompts, fires `RequestUseMachine` and `RequestCollectOutput` RemoteEvents, displays machine state feedback to the player.
-  - `Main.server.lua` updated to initialize `DNAExtractorService`.
-  - `Main.client.lua` updated to initialize `MachineController`.
-  - `TestRunner.server.lua` updated with `DNAExtractorService` and `dnaExtractorSpec`.
+- **Phase 6 — Dinosaur Incubator (TDD):**
+  - Unit test specifications (`Incubator.spec.lua` and CLI test simulation suite in `tests/run_tests.py`).
+  - Authoritative Incubator Service (`IncubatorService.lua`): per-player state machine (Idle → Processing → Auto-collect → Idle), validates player is carrying a DNA item, consumes the DNA from inventory and carrying state on insertion, processes incubation via timer (`MachineConfig.INCUBATOR.BaseProcessingTime`), generates a Dinosaur item from `DinosaurID` and `Rarity` of the input DNA, automatically deposits the dinosaur directly into the player's inventory (`AutoCollectOutput = true`), awards `EconomyConfig.XPPerIncubation` (20 XP), test hook `forceCompleteProcessing(userId)`, and auto-provisions `Workspace.Machines.IncubatorMachine`.
+  - Machine Controller (`MachineController.lua`) extended: handles `IncubatorInsertPrompt` ProximityPrompt, validates carried DNA on client, fires `RequestUseMachine` RemoteEvent with `INCUBATOR`, receives server state notifications and provides UI feedback.
+  - `Main.server.lua` updated to initialize `IncubatorService`.
+  - `TestRunner.server.lua` updated with `IncubatorService` and `incubatorSpec`.
 
 **Current Explorer hierarchy:**
 ```
@@ -872,6 +875,7 @@ ReplicatedStorage/
     Carrying.spec.lua
     Cleaning.spec.lua
     DNAExtractor.spec.lua
+    Incubator.spec.lua
   Remotes.lua
   RemoteEvents/
     RequestExcavation
@@ -908,6 +912,7 @@ ServerScriptService/
     CarryingService.lua
     CleaningService.lua
     DNAExtractorService.lua
+    IncubatorService.lua
 
 StarterPlayer/
   StarterPlayerScripts/
@@ -929,6 +934,7 @@ Workspace/
     BeginnerCleaningStation (Auto-provisioned or builder-placed with ProximityPrompt)
   Machines/
     DNAExtractorMachine (Auto-provisioned at position (28, 2, 0) with ExtractorInsertPrompt & ExtractorCollectPrompt, tagged "DNAExtractor")
+    IncubatorMachine (Auto-provisioned at position (44, 2, 0) with IncubatorInsertPrompt, tagged "Incubator")
 ```
 
 **Implemented systems:**
@@ -938,16 +944,17 @@ Workspace/
 4. **CarryingService:** Authoritative carrying and placement management (hand attachment, ownership checks, decoupled inventory retention, placement validation).
 5. **CleaningService:** Authoritative fossil cleaning system (distance validation, carried fossil validation, equipped brush validation, duration calculation, Quality assignment, XP reward, inventory sync, auto-provisioned cleaning station).
 6. **DNAExtractorService:** Authoritative per-player state machine for DNA extraction (Idle/Processing/OutputReady states, insertion validation, fossil consumption, timer, DNA item generation, manual collection, XP award, auto-provisioned machine).
-7. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`, `MachineController`.
-8. **TDD Test Suite:** Automated unit tests covering all 5 phases (27 tests), executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
+7. **IncubatorService:** Authoritative per-player state machine for Dinosaur incubation (Idle/Processing states, DNA validation, item consumption, incubation timer, dinosaur item generation, automatic inventory collection, XP award, auto-provisioned machine).
+8. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`, `MachineController`.
+9. **TDD Test Suite:** Automated unit tests covering all 6 phases (36 tests), executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
 
 **Known limitations & pending tests:**
 - 3D custom models and animations will be added by the user in future updates; code utilizes placeholder models with BillboardGuis and is aligned for seamless asset dropping into `ReplicatedStorage.Assets.Items`.
 - Data persistence is session-based in memory; DataStore integration is scheduled for Phase 9.
-- DNA items are now in inventory and ready to be placed in the Incubator (Phase 6).
+- Dinosaurs are now obtained and in inventory, ready to be placed in cages (Phase 7).
 - In-game automated tests run on Studio startup via `TestRunner.server.lua`.
 
-**Next recommended task:** Phase 6 — Dinosaur Incubator.
+**Next recommended task:** Phase 7 — Dinosaurs and Cages.
 
 ---
 

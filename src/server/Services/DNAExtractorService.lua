@@ -103,11 +103,11 @@ local function fireStateUpdate(userId: number)
 end
 
 local function fireXPUpdate(userId: number, data: Types.PlayerData)
-	local player = Players:GetPlayerByUserId(userId)
-	if not player then return end
-
 	data.XP += EconomyConfig.XPPerExtraction
 	data.Statistics.TotalDNAExtracted += 1
+
+	local player = Players:GetPlayerByUserId(userId)
+	if not player then return end
 
 	if xpUpdatedRemote then
 		xpUpdatedRemote:FireClient(player, data.XP)
@@ -471,3 +471,4 @@ function DNAExtractorService.init()
 end
 
 return DNAExtractorService
+

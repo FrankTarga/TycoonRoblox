@@ -57,6 +57,7 @@ local DiggingService       = require(Services.DiggingService)
 local CarryingService      = require(Services.CarryingService)
 local CleaningService      = require(Services.CleaningService)
 local DNAExtractorService  = require(Services.DNAExtractorService)
+local IncubatorService     = require(Services.IncubatorService)
 
 DataService.init()
 InventoryService.init()
@@ -65,6 +66,7 @@ DiggingService.init()
 CarryingService.init()
 CleaningService.init()
 DNAExtractorService.init()
+IncubatorService.init()
 
 print("[Server] Services initialized.")
 

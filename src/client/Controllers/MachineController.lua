@@ -85,6 +85,28 @@ local function onPromptTriggered(prompt: ProximityPrompt, triggeredPlayer: Playe
 			requestCollectOutputRemote:FireServer(machine, "DNA_EXTRACTOR")
 		end
 		task.delay(1.5, function() pendingMachineRequest = false end)
+
+	-- -----------------------------------------------------------
+	-- DINOSAUR INCUBATOR — Insert DNA
+	-- -----------------------------------------------------------
+	elseif prompt.Name == "IncubatorInsertPrompt" then
+		if not CarryController then return end
+
+		local carried = CarryController.getCarriedItem()
+		if not carried then
+			showMachineFeedback("INCUBATOR", false, "Pick up a DNA item first.")
+			return
+		end
+		if carried.ItemType ~= "DNA" then
+			showMachineFeedback("INCUBATOR", false, "Incubator only accepts DNA items.")
+			return
+		end
+
+		pendingMachineRequest = true
+		if requestUseMachineRemote then
+			requestUseMachineRemote:FireServer(machine, "INCUBATOR")
+		end
+		task.delay(1.5, function() pendingMachineRequest = false end)
 	end
 end
 
@@ -100,6 +122,8 @@ type MachineStatePayload = {
 	StartTime: number?,
 	ProcessingTime: number?,
 	HasOutput: boolean?,
+	CompletedDinosaurID: string?,
+	CompletedDinosaurName: string?,
 	Error: string?,
 }
 
@@ -125,6 +149,21 @@ local function onMachineStateUpdated(payload: MachineStatePayload)
 				showMachineFeedback("DNA_EXTRACTOR", true, "DNA collected and added to inventory!")
 			else
 				showMachineFeedback("DNA_EXTRACTOR", true, "DNA Extractor is ready.")
+			end
+		end
+
+	elseif payload.MachineID == "INCUBATOR" then
+		if payload.State == "Processing" then
+			local dinoName = payload.InputDinosaurID or "Dinosaur"
+			showMachineFeedback("INCUBATOR", true,
+				string.format("Incubating %s... (%.0fs)", dinoName, payload.ProcessingTime or 30))
+
+		elseif payload.State == "Idle" then
+			if payload.CompletedDinosaurName then
+				showMachineFeedback("INCUBATOR", true,
+					string.format("Incubation complete! %s added to your inventory!", payload.CompletedDinosaurName))
+			else
+				showMachineFeedback("INCUBATOR", true, "Dinosaur Incubator is ready.")
 			end
 		end
 	end
@@ -154,3 +193,4 @@ function MachineController.init()
 end
 
 return MachineController
+

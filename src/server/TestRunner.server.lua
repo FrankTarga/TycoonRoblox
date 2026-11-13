@@ -24,6 +24,7 @@ local function runAllSuites()
 	local CarryingService = require(ServerScriptService.Services.CarryingService)
 	local CleaningService = require(ServerScriptService.Services.CleaningService)
 	local DNAExtractorService = require(ServerScriptService.Services.DNAExtractorService)
+	local IncubatorService = require(ServerScriptService.Services.IncubatorService)
 
 	-- Register spec files
 	local itemUtilsSpec     = require(TestsFolder:WaitForChild("ItemUtils.spec"))
@@ -31,6 +32,7 @@ local function runAllSuites()
 	local carryingSpec      = require(TestsFolder:WaitForChild("Carrying.spec"))
 	local cleaningSpec      = require(TestsFolder:WaitForChild("Cleaning.spec"))
 	local dnaExtractorSpec  = require(TestsFolder:WaitForChild("DNAExtractor.spec"))
+	local incubatorSpec     = require(TestsFolder:WaitForChild("Incubator.spec"))
 
 	TestFramework.clear()
 
@@ -39,6 +41,7 @@ local function runAllSuites()
 	carryingSpec(CarryingService)
 	cleaningSpec(CarryingService, CleaningService)
 	dnaExtractorSpec(CarryingService, DNAExtractorService)
+	incubatorSpec(CarryingService, IncubatorService)
 
 	local results = TestFramework.runAll()
 
