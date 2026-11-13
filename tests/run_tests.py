@@ -713,6 +713,198 @@ runner.test("Incubator force_complete while Idle is safe no-op", test_incubator_
 runner.test("Incubator auto-collects dinosaur to inventory, resets to Idle, and awards 20 XP", test_incubator_force_complete_autocollects_dinosaur_resets_idle_awards_20_xp)
 runner.test("Incubator allows a second incubation after the first completes", test_incubator_second_incubation_allowed)
 
+# -------------------------------------------------------------
+# Dinosaurs and Cages System Simulation (Phase 7)
+# -------------------------------------------------------------
+print("\n[SUITE] Dinosaurs and Cages System Simulation (Phase 7)")
+
+class MockCageService:
+    def __init__(self, srv):
+        self.server = srv
+        self.cages = {}
+        self.player_xp = {}
+        self.player_money = {}
+
+    def _get_cage(self, user_id, cage_id):
+        if user_id not in self.cages:
+            self.cages[user_id] = {}
+        if cage_id not in self.cages[user_id]:
+            self.cages[user_id][cage_id] = {
+                "dino_id": None,
+                "item_uid": None,
+                "last_collection": time.time(),
+                "stored_item": None,
+            }
+        return self.cages[user_id][cage_id]
+
+    def place_dinosaur(self, user_id, cage_id):
+        item = self.server.get_carried_item(user_id)
+        if not item:
+            return False, "No item is being carried"
+        if item["ItemType"] != "Dinosaur":
+            return False, "Only dinosaurs can be placed in cages"
+        cage = self._get_cage(user_id, cage_id)
+        if cage["dino_id"] is not None:
+            return False, "Cage is already occupied"
+        # Consume from inventory & carrying
+        self.server.remove_item(user_id, item["ItemUID"])
+        self.server.carried_items.pop(user_id, None)
+        cage["dino_id"] = item["DinosaurID"]
+        cage["item_uid"] = item["ItemUID"]
+        cage["stored_item"] = item
+        cage["last_collection"] = time.time()
+        self.player_xp[user_id] = self.player_xp.get(user_id, 0) + 25
+        return True, "Dinosaur placed"
+
+    def calculate_pending_income(self, user_id, cage_id):
+        cage = self._get_cage(user_id, cage_id)
+        if not cage["dino_id"]:
+            return 0
+        elapsed = time.time() - cage["last_collection"]
+        intervals = int(elapsed // 60)
+        base_income = 10  # TREX BaseIncome
+        return min(10000, intervals * base_income)
+
+    def simulate_elapsed(self, user_id, cage_id, seconds):
+        cage = self._get_cage(user_id, cage_id)
+        cage["last_collection"] -= seconds
+
+    def collect_income(self, user_id, cage_id):
+        pending = self.calculate_pending_income(user_id, cage_id)
+        if pending <= 0:
+            return False, "No income to collect"
+        self.player_money[user_id] = self.player_money.get(user_id, 0) + pending
+        cage = self._get_cage(user_id, cage_id)
+        cage["last_collection"] = time.time()
+        return True, pending
+
+    def retrieve_dinosaur(self, user_id, cage_id):
+        cage = self._get_cage(user_id, cage_id)
+        if not cage["dino_id"]:
+            return False, "No dinosaur in cage"
+        pending = self.calculate_pending_income(user_id, cage_id)
+        if pending > 0:
+            self.collect_income(user_id, cage_id)
+        dino = cage["stored_item"]
+        self.server.add_item(user_id, dino)
+        cage["dino_id"] = None
+        cage["item_uid"] = None
+        cage["stored_item"] = None
+        return True, dino
+
+cage_service = MockCageService(server)
+
+def test_cage_reject_no_item():
+    success, reason = cage_service.place_dinosaur(5001, "CAGE_1")
+    assert success is False
+    assert reason == "No item is being carried"
+
+def test_cage_reject_fossil():
+    fossil = create_fossil_item("TREX_TOOTH")
+    server.add_item(5002, fossil)
+    server.set_carried_item(5002, fossil["ItemUID"])
+    success, reason = cage_service.place_dinosaur(5002, "CAGE_1")
+    assert success is False
+    assert reason == "Only dinosaurs can be placed in cages"
+    assert len(server.get_inventory(5002)) == 1
+
+def test_cage_reject_dna():
+    fossil = create_fossil_item("TREX_TOOTH")
+    dna = create_dna_item(fossil)
+    server.add_item(5003, dna)
+    server.set_carried_item(5003, dna["ItemUID"])
+    success, reason = cage_service.place_dinosaur(5003, "CAGE_1")
+    assert success is False
+    assert reason == "Only dinosaurs can be placed in cages"
+
+def test_cage_accept_dinosaur_consume_and_award_25_xp():
+    fossil = create_fossil_item("TREX_TOOTH")
+    dna = create_dna_item(fossil)
+    dino = create_dinosaur_item(dna)
+    server.add_item(5004, dino)
+    server.set_carried_item(5004, dino["ItemUID"])
+    success, _ = cage_service.place_dinosaur(5004, "CAGE_1")
+    assert success is True
+    # Dinosaur consumed from inventory and carrying
+    assert len(server.get_inventory(5004)) == 0
+    assert server.is_carrying(5004) is False
+    # Cage holds the dinosaur
+    cage = cage_service._get_cage(5004, "CAGE_1")
+    assert cage["dino_id"] == "TREX"
+    assert cage["item_uid"] == dino["ItemUID"]
+    # 25 XP awarded
+    assert cage_service.player_xp[5004] == 25
+
+def test_cage_reject_already_occupied():
+    fossil = create_fossil_item("TREX_TOOTH")
+    dna = create_dna_item(fossil)
+    dino2 = create_dinosaur_item(dna)
+    server.add_item(5004, dino2)
+    server.set_carried_item(5004, dino2["ItemUID"])
+    success, reason = cage_service.place_dinosaur(5004, "CAGE_1")
+    assert success is False
+    assert reason == "Cage is already occupied"
+    # Second dino stays safe in inventory
+    assert len(server.get_inventory(5004)) == 1
+
+def test_cage_empty_accumulates_zero_income():
+    assert cage_service.calculate_pending_income(5005, "CAGE_1") == 0
+
+def test_cage_occupied_accumulates_income():
+    # User 5004 placed TREX (BaseIncome = 10)
+    cage_service.simulate_elapsed(5004, "CAGE_1", 120)  # 2 intervals
+    pending = cage_service.calculate_pending_income(5004, "CAGE_1")
+    assert pending == 20
+
+def test_cage_income_capped_at_max():
+    cage_service.simulate_elapsed(5004, "CAGE_1", 60 * 10000)
+    pending = cage_service.calculate_pending_income(5004, "CAGE_1")
+    assert pending == 10000
+
+def test_cage_collect_zero_rejected():
+    success, reason = cage_service.collect_income(5005, "CAGE_1")
+    assert success is False
+    assert reason == "No income to collect"
+
+def test_cage_collect_income_adds_money_and_resets():
+    # User 5004 currently has 10,000 pending
+    success, collected = cage_service.collect_income(5004, "CAGE_1")
+    assert success is True
+    assert collected == 10000
+    assert cage_service.player_money[5004] == 10000
+    # Pending income is reset to 0
+    assert cage_service.calculate_pending_income(5004, "CAGE_1") == 0
+
+def test_cage_retrieve_dinosaur_returns_to_inventory_and_collects_income():
+    # Clear user 5004 leftover dino2 from rejection test
+    server.inventories.pop(5004, None)
+    cage_service.simulate_elapsed(5004, "CAGE_1", 60)  # 1 interval = $10
+    success, dino = cage_service.retrieve_dinosaur(5004, "CAGE_1")
+    assert success is True
+    assert dino["ItemType"] == "Dinosaur"
+    assert dino["DinosaurID"] == "TREX"
+    # Dinosaur returned to inventory
+    inv = server.get_inventory(5004)
+    assert len(inv) == 1
+    assert inv[0]["ItemType"] == "Dinosaur"
+    # Cage is empty now
+    cage = cage_service._get_cage(5004, "CAGE_1")
+    assert cage["dino_id"] is None
+    # Pending $10 was collected ($10,000 + $10 = $10,010)
+    assert cage_service.player_money[5004] == 10010
+
+runner.test("Cage rejects when not carrying anything", test_cage_reject_no_item)
+runner.test("Cage rejects fossil (fossil stays in inventory)", test_cage_reject_fossil)
+runner.test("Cage rejects DNA item", test_cage_reject_dna)
+runner.test("Cage accepts dinosaur, consumes it from inventory and awards 25 XP", test_cage_accept_dinosaur_consume_and_award_25_xp)
+runner.test("Cage rejects second dinosaur when already occupied", test_cage_reject_already_occupied)
+runner.test("Empty cage accumulates zero income", test_cage_empty_accumulates_zero_income)
+runner.test("Occupied cage accumulates passive income over time", test_cage_occupied_accumulates_income)
+runner.test("Cage income is capped at MaxAccumulatedIncome (10,000)", test_cage_income_capped_at_max)
+runner.test("Collecting income when zero is rejected", test_cage_collect_zero_rejected)
+runner.test("Collecting income adds money and resets pending balance", test_cage_collect_income_adds_money_and_resets)
+runner.test("Retrieving dinosaur returns it to inventory and collects pending income", test_cage_retrieve_dinosaur_returns_to_inventory_and_collects_income)
+
 all_passed = runner.summary()
 sys.exit(0 if all_passed else 1)
 

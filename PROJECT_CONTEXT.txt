@@ -2,6 +2,7 @@
 
 **Engine:** Roblox Studio  
 **Programming Language:** Luau  
+**Development Methodology:** Test-Driven Development (TDD) — strict spec-first development  
 **Project Type:** Tycoon / Simulation / Collection  
 **Document Purpose:** Persistent development context for AI-assisted implementation.
 
@@ -47,6 +48,17 @@ Examples:
 Different fossil parts may correspond to the same DinosaurID.
 
 Do not implement a skeleton completion system, fossil set collection requirement, or multi-part assembly mechanic unless explicitly requested.
+
+---
+
+## 2.1 DEVELOPMENT METHODOLOGY — TEST-DRIVEN DEVELOPMENT (TDD)
+
+**This project strictly follows Test-Driven Development (TDD) across all phases.**
+
+Rules of TDD in this codebase:
+1. **Spec-first development:** Before implementing any new service or feature, author the `.spec.lua` unit test file and CLI simulation tests defining all expected behaviors, validations, error conditions, and state transitions.
+2. **Authoritative verification:** Run tests before and after code changes. Never consider a phase complete without 100% passing tests (`tests/run_tests.py` and `TestRunner.server.lua`).
+3. **No untested code or claims:** Every service logic must be covered by automated tests. All commits must include their respective test suites.
 
 ---
 
@@ -794,6 +806,11 @@ Do not skip phases without a clear technical reason.
 
 These rules must be followed throughout the project.
 
+### Development Methodology — Strict TDD:
+1. **Spec-first development:** Before implementing service logic, write the test specification (`.spec.lua`) and CLI test cases defining all edge cases, validations, state transitions, and business rules.
+2. **Authoritative verification:** Run tests to verify failure/coverage, implement the system, and re-run all test suites (`run_tests.py` and `TestRunner.server.lua`) to achieve 100% success.
+3. **No untested assertions:** Never claim a system is tested without running automated tests.
+
 ### Before implementing a phase:
 
 1. Inspect the existing Explorer hierarchy.
@@ -833,7 +850,7 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
 
 ## 30. CURRENT PROJECT STATUS
 
-**Development stage:** Phase 6 — Dinosaur Incubator (Completed).
+**Development stage:** Phase 7 — Dinosaurs and Cages (Completed).
 
 **Completed phases:**
 - **Phase 1 — Project Structure:** Folder architecture, shared configurations (Rarities, Fossils, Dinosaurs, Zones, Economy, Machines, Equipment), shared modules (Types, ItemUtils, Remotes), server bootstrap (`Main.server.lua`), client bootstrap (`Main.client.lua`), and service stubs.
@@ -850,9 +867,13 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
 - **Phase 6 — Dinosaur Incubator (TDD):**
   - Unit test specifications (`Incubator.spec.lua` and CLI test simulation suite in `tests/run_tests.py`).
   - Authoritative Incubator Service (`IncubatorService.lua`): per-player state machine (Idle → Processing → Auto-collect → Idle), validates player is carrying a DNA item, consumes the DNA from inventory and carrying state on insertion, processes incubation via timer (`MachineConfig.INCUBATOR.BaseProcessingTime`), generates a Dinosaur item from `DinosaurID` and `Rarity` of the input DNA, automatically deposits the dinosaur directly into the player's inventory (`AutoCollectOutput = true`), awards `EconomyConfig.XPPerIncubation` (20 XP), test hook `forceCompleteProcessing(userId)`, and auto-provisions `Workspace.Machines.IncubatorMachine`.
-  - Machine Controller (`MachineController.lua`) extended: handles `IncubatorInsertPrompt` ProximityPrompt, validates carried DNA on client, fires `RequestUseMachine` RemoteEvent with `INCUBATOR`, receives server state notifications and provides UI feedback.
-  - `Main.server.lua` updated to initialize `IncubatorService`.
-  - `TestRunner.server.lua` updated with `IncubatorService` and `incubatorSpec`.
+- **Phase 7 — Dinosaurs and Cages (TDD):**
+  - Unit test specifications (`Cage.spec.lua` and CLI test simulation suite in `tests/run_tests.py`).
+  - Authoritative Cage Service (`CageService.lua`): validates dinosaur placement into cages, checks item type (`ItemType == "Dinosaur"`), rejects double-occupancy, consumes carried dinosaur, assigns dinosaur to `PlayerData.CageAssignments`, awards `EconomyConfig.XPPerDinosaurPlaced` (25 XP), calculates passive income from `DinosaurConfig.BaseIncome` and elapsed time intervals, caps pending income at `EconomyConfig.MaxAccumulatedIncome` (10,000), collects income directly into `PlayerData.Money`, allows dinosaur retrieval back to inventory, and auto-provisions `Workspace.Cages.StarterCage` at `(0, 3, 25)` with placement and collection prompts.
+  - Cage Controller (`CageController.lua`): handles `CagePlacementPrompt` and `CageCollectPrompt`, validates held item, fires `RequestPlaceDinosaur` and `RequestCollectIncome`, and notifies player of state and income updates.
+  - `Main.server.lua` updated to initialize `CageService`.
+  - `Main.client.lua` updated to initialize `CageController`.
+  - `TestRunner.server.lua` updated with `CageService` and `cageSpec`.
 
 **Current Explorer hierarchy:**
 ```
@@ -876,6 +897,7 @@ ReplicatedStorage/
     Cleaning.spec.lua
     DNAExtractor.spec.lua
     Incubator.spec.lua
+    Cage.spec.lua
   Remotes.lua
   RemoteEvents/
     RequestExcavation
@@ -913,6 +935,7 @@ ServerScriptService/
     CleaningService.lua
     DNAExtractorService.lua
     IncubatorService.lua
+    CageService.lua
 
 StarterPlayer/
   StarterPlayerScripts/
@@ -923,6 +946,7 @@ StarterPlayer/
       InventoryController.lua
       CleaningController.lua
       MachineController.lua
+      CageController.lua
 
 StarterGui/
   (Placeholder for future GUI phases)
@@ -935,6 +959,8 @@ Workspace/
   Machines/
     DNAExtractorMachine (Auto-provisioned at position (28, 2, 0) with ExtractorInsertPrompt & ExtractorCollectPrompt, tagged "DNAExtractor")
     IncubatorMachine (Auto-provisioned at position (44, 2, 0) with IncubatorInsertPrompt, tagged "Incubator")
+  Cages/
+    StarterCage (Auto-provisioned at position (0, 3, 25) with CagePlacementPrompt, CageCollectPrompt, CageRetrievePrompt, tagged "DinosaurCage")
 ```
 
 **Implemented systems:**
@@ -945,16 +971,17 @@ Workspace/
 5. **CleaningService:** Authoritative fossil cleaning system (distance validation, carried fossil validation, equipped brush validation, duration calculation, Quality assignment, XP reward, inventory sync, auto-provisioned cleaning station).
 6. **DNAExtractorService:** Authoritative per-player state machine for DNA extraction (Idle/Processing/OutputReady states, insertion validation, fossil consumption, timer, DNA item generation, manual collection, XP award, auto-provisioned machine).
 7. **IncubatorService:** Authoritative per-player state machine for Dinosaur incubation (Idle/Processing states, DNA validation, item consumption, incubation timer, dinosaur item generation, automatic inventory collection, XP award, auto-provisioned machine).
-8. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`, `MachineController`.
-9. **TDD Test Suite:** Automated unit tests covering all 6 phases (36 tests), executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
+8. **CageService:** Authoritative dinosaur cage management and passive income system (placement validation, dinosaur consumption, passive income generation, income capping, authoritative collection into money balance, dinosaur retrieval, auto-provisioned cage).
+9. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`, `MachineController`, `CageController`.
+10. **TDD Test Suite:** Automated unit tests covering all 7 phases (47 tests), executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
 
 **Known limitations & pending tests:**
 - 3D custom models and animations will be added by the user in future updates; code utilizes placeholder models with BillboardGuis and is aligned for seamless asset dropping into `ReplicatedStorage.Assets.Items`.
 - Data persistence is session-based in memory; DataStore integration is scheduled for Phase 9.
-- Dinosaurs are now obtained and in inventory, ready to be placed in cages (Phase 7).
+- Passive income is generated and ready to feed the Economy, Shop, and Progression systems (Phase 8).
 - In-game automated tests run on Studio startup via `TestRunner.server.lua`.
 
-**Next recommended task:** Phase 7 — Dinosaurs and Cages.
+**Next recommended task:** Phase 8 — Economy and Progression.
 
 ---
 

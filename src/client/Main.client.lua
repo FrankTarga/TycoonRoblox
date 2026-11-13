@@ -109,12 +109,14 @@ local InventoryController = require(Controllers:WaitForChild("InventoryControlle
 local ExcavationController = require(Controllers:WaitForChild("ExcavationController"))
 local CleaningController = require(Controllers:WaitForChild("CleaningController"))
 local MachineController = require(Controllers:WaitForChild("MachineController"))
+local CageController = require(Controllers:WaitForChild("CageController"))
 
 CarryController.init()
 InventoryController.init()
 ExcavationController.init()
 CleaningController.init()
 MachineController.init()
+CageController.init()
 
 -- Controllers to be hooked in future phases:
 -- local UIController = require(Controllers.UIController)
