@@ -371,6 +371,177 @@ runner.test("Cleaning without equipped brush rejected", test_clean_without_brush
 runner.test("Cleaning raw fossil succeeds, sets IsCleaned=True and awards 5 XP", test_clean_uncleaned_fossil_succeeds_and_awards_xp)
 runner.test("Cleaning already cleaned fossil rejected", test_clean_already_cleaned_fossil_rejected)
 
+# -------------------------------------------------------------
+# DNA Extractor System Simulation Tests (Phase 5)
+# -------------------------------------------------------------
+print("\n[SUITE] DNA Extractor System Simulation (Phase 5)")
+
+# Machine states
+IDLE = "Idle"
+PROCESSING = "Processing"
+OUTPUT_READY = "OutputReady"
+
+class MockDNAExtractor:
+    def __init__(self, game_server):
+        self.server = game_server
+        self.states = {}       # user_id -> state dict
+        self.player_xp = {}
+
+    def _get_state(self, user_id):
+        if user_id not in self.states:
+            self.states[user_id] = {
+                "state": IDLE,
+                "input_dino_id": None,
+                "input_rarity": None,
+                "pending_dna": None,
+            }
+        return self.states[user_id]
+
+    def reset_machine(self, user_id):
+        self.states[user_id] = {
+            "state": IDLE,
+            "input_dino_id": None,
+            "input_rarity": None,
+            "pending_dna": None,
+        }
+
+    def insert_item(self, user_id):
+        item = self.server.get_carried_item(user_id)
+        if not item:
+            return False, "No item is being carried"
+        if item["ItemType"] != "Fossil":
+            return False, "DNA Extractor only accepts cleaned fossils"
+        if not item["IsCleaned"]:
+            return False, "Fossil must be cleaned before DNA extraction"
+        s = self._get_state(user_id)
+        if s["state"] != IDLE:
+            return False, "Machine is not Idle"
+        # Consume from inventory & carrying
+        self.server.remove_item(user_id, item["ItemUID"])
+        self.server.carried_items.pop(user_id, None)
+        s["state"] = PROCESSING
+        s["input_dino_id"] = item["DinosaurID"]
+        s["input_rarity"] = item["Rarity"]
+        return True, "Processing started"
+
+    def force_complete(self, user_id):
+        s = self._get_state(user_id)
+        if s["state"] != PROCESSING:
+            return
+        dna = {
+            "ItemUID": str(uuid.uuid4()),
+            "ItemType": "DNA",
+            "ConfigID": s["input_dino_id"] + "_DNA",
+            "DinosaurID": s["input_dino_id"],
+            "Rarity": s["input_rarity"],
+            "Quality": 80,
+            "IsCleaned": False,
+            "ObtainedAt": int(time.time()),
+        }
+        s["state"] = OUTPUT_READY
+        s["pending_dna"] = dna
+
+    def collect_dna(self, user_id):
+        s = self._get_state(user_id)
+        if s["state"] != OUTPUT_READY or not s["pending_dna"]:
+            return False, "No DNA available to collect"
+        dna = s["pending_dna"]
+        self.server.add_item(user_id, dna)
+        self.player_xp[user_id] = self.player_xp.get(user_id, 0) + 15
+        self.reset_machine(user_id)
+        return True, dna
+
+extractor = MockDNAExtractor(server)
+
+def test_extractor_reject_no_item():
+    success, reason = extractor.insert_item(3001)
+    assert success is False
+    assert reason == "No item is being carried"
+
+def test_extractor_reject_uncleaned_fossil():
+    fossil = create_fossil_item("TREX_TOOTH")
+    server.add_item(3002, fossil)
+    server.set_carried_item(3002, fossil["ItemUID"])
+    success, reason = extractor.insert_item(3002)
+    assert success is False
+    assert reason == "Fossil must be cleaned before DNA extraction"
+    # Fossil still in inventory — not consumed
+    assert len(server.get_inventory(3002)) == 1
+
+def test_extractor_reject_dna_item():
+    fossil = create_fossil_item("TREX_TOOTH")
+    dna = create_dna_item(fossil)
+    server.add_item(3003, dna)
+    server.set_carried_item(3003, dna["ItemUID"])
+    success, reason = extractor.insert_item(3003)
+    assert success is False
+    assert reason == "DNA Extractor only accepts cleaned fossils"
+
+def test_extractor_accept_cleaned_fossil_and_consume():
+    fossil = create_fossil_item("TREX_TOOTH")
+    fossil["IsCleaned"] = True
+    server.add_item(3004, fossil)
+    server.set_carried_item(3004, fossil["ItemUID"])
+    success, _ = extractor.insert_item(3004)
+    assert success is True
+    # Fossil consumed from inventory and carrying state
+    assert len(server.get_inventory(3004)) == 0
+    assert server.is_carrying(3004) is False
+    # Machine is now Processing
+    assert extractor._get_state(3004)["state"] == PROCESSING
+
+def test_extractor_reject_second_insertion_while_processing():
+    fossil2 = create_fossil_item("TREX_TOOTH")
+    fossil2["IsCleaned"] = True
+    server.add_item(3004, fossil2)
+    server.set_carried_item(3004, fossil2["ItemUID"])
+    success, reason = extractor.insert_item(3004)
+    assert success is False
+    assert reason == "Machine is not Idle"
+
+def test_extractor_complete_and_enter_output_ready():
+    extractor.force_complete(3004)
+    assert extractor._get_state(3004)["state"] == OUTPUT_READY
+    assert extractor._get_state(3004)["pending_dna"] is not None
+
+def test_extractor_reject_collect_when_idle():
+    success, reason = extractor.collect_dna(3005)
+    assert success is False
+    assert reason == "No DNA available to collect"
+
+def test_extractor_collect_dna_adds_to_inventory_resets_machine_awards_xp():
+    # Clear any leftover inventory from the rejected second-insertion test
+    # (fossil2 was added to 3004's inventory but never consumed because insertion failed)
+    server.inventories.pop(3004, None)
+    success, dna = extractor.collect_dna(3004)
+    assert success is True, f"collect_dna returned False: {dna}"
+    assert dna["ItemType"] == "DNA", f"Expected DNA, got {dna['ItemType']}"
+    assert dna["DinosaurID"] == "TREX", f"Expected TREX, got {dna['DinosaurID']}"
+    # DNA is now the only item in inventory
+    inv = server.get_inventory(3004)
+    assert len(inv) == 1, f"Expected 1 item in inventory, got {len(inv)}: {inv}"
+    assert inv[0]["ItemType"] == "DNA", f"Expected DNA item, got {inv[0]['ItemType']}"
+    # Machine reset to Idle
+    assert extractor._get_state(3004)["state"] == IDLE, "Machine not reset to Idle"
+    # XP awarded
+    assert extractor.player_xp[3004] == 15, f"Expected 15 XP, got {extractor.player_xp.get(3004)}"
+
+def test_extractor_no_double_collect():
+    # 3004 machine is Idle — second collect should fail
+    success, reason = extractor.collect_dna(3004)
+    assert success is False
+    assert reason == "No DNA available to collect"
+
+runner.test("Extractor rejects when not carrying anything", test_extractor_reject_no_item)
+runner.test("Extractor rejects uncleaned fossil (fossil stays in inventory)", test_extractor_reject_uncleaned_fossil)
+runner.test("Extractor rejects DNA item (wrong type)", test_extractor_reject_dna_item)
+runner.test("Extractor accepts cleaned fossil, consumes it from inventory and carrying state", test_extractor_accept_cleaned_fossil_and_consume)
+runner.test("Extractor rejects second insertion while Processing", test_extractor_reject_second_insertion_while_processing)
+runner.test("Extractor transitions to OutputReady after processing completes", test_extractor_complete_and_enter_output_ready)
+runner.test("Extractor rejects DNA collection when machine is Idle", test_extractor_reject_collect_when_idle)
+runner.test("Collecting DNA adds it to inventory, resets machine to Idle, and awards 15 XP", test_extractor_collect_dna_adds_to_inventory_resets_machine_awards_xp)
+runner.test("Collecting DNA twice from same extraction rejected", test_extractor_no_double_collect)
+
 all_passed = runner.summary()
 sys.exit(0 if all_passed else 1)
 

@@ -833,7 +833,7 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
 
 ## 30. CURRENT PROJECT STATUS
 
-**Development stage:** Phase 4 — Fossil Cleaning (Completed).
+**Development stage:** Phase 5 — DNA Extractor (Completed).
 
 **Completed phases:**
 - **Phase 1 — Project Structure:** Folder architecture, shared configurations (Rarities, Fossils, Dinosaurs, Zones, Economy, Machines, Equipment), shared modules (Types, ItemUtils, Remotes), server bootstrap (`Main.server.lua`), client bootstrap (`Main.client.lua`), and service stubs.
@@ -843,6 +843,13 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
   - Unit test specifications (`Cleaning.spec.lua` and CLI test simulation in `tests/run_tests.py`).
   - Authoritative Cleaning Service (`CleaningService.lua`): validates station interaction distance, ensures player is carrying an uncleaned fossil, verifies equipped brush, calculates duration scaled by brush speed multiplier, marks `IsCleaned = true`, assigns Quality rating (70-100%), awards XP, triggers level-up check, updates physical visual label, and auto-provisions a physical Cleaning Station in `Workspace.CleaningStations`.
   - Client Cleaning Controller (`CleaningController.lua`): ProximityPrompt interaction handling on cleaning stations, UX pre-checks, and completion/reward feedback.
+- **Phase 5 — DNA Extractor (TDD):**
+  - Unit test specifications (`DNAExtractor.spec.lua` and CLI test simulation suite in `tests/run_tests.py`).
+  - Authoritative DNA Extractor Service (`DNAExtractorService.lua`): per-player state machine (Idle → Processing → OutputReady → Idle), validates player is carrying a cleaned fossil, consumes the fossil from inventory on insertion, processes extraction via timer (`MachineConfig.ExtractionTime`), generates a DNA item from `DinosaurID` and `Rarity` of the input fossil, awards `EconomyConfig.XPPerExtraction` (15 XP) on collection, manual output collection only (`AutoCollectOutput = false`), test hook `forceCompleteProcessing(userId)`, and auto-provisions `Workspace.Machines.DNAExtractorMachine`.
+  - Machine Controller (`MachineController.lua`): handles `ExtractorInsertPrompt` and `ExtractorCollectPrompt` ProximityPrompts, fires `RequestUseMachine` and `RequestCollectOutput` RemoteEvents, displays machine state feedback to the player.
+  - `Main.server.lua` updated to initialize `DNAExtractorService`.
+  - `Main.client.lua` updated to initialize `MachineController`.
+  - `TestRunner.server.lua` updated with `DNAExtractorService` and `dnaExtractorSpec`.
 
 **Current Explorer hierarchy:**
 ```
@@ -864,6 +871,7 @@ ReplicatedStorage/
     Inventory.spec.lua
     Carrying.spec.lua
     Cleaning.spec.lua
+    DNAExtractor.spec.lua
   Remotes.lua
   RemoteEvents/
     RequestExcavation
@@ -899,6 +907,7 @@ ServerScriptService/
     DiggingService.lua
     CarryingService.lua
     CleaningService.lua
+    DNAExtractorService.lua
 
 StarterPlayer/
   StarterPlayerScripts/
@@ -908,6 +917,7 @@ StarterPlayer/
       CarryController.lua
       InventoryController.lua
       CleaningController.lua
+      MachineController.lua
 
 StarterGui/
   (Placeholder for future GUI phases)
@@ -917,6 +927,8 @@ Workspace/
     BeginnerExcavationSpot (Auto-provisioned or builder-placed with ProximityPrompt & ZoneID attribute)
   CleaningStations/
     BeginnerCleaningStation (Auto-provisioned or builder-placed with ProximityPrompt)
+  Machines/
+    DNAExtractorMachine (Auto-provisioned at position (28, 2, 0) with ExtractorInsertPrompt & ExtractorCollectPrompt, tagged "DNAExtractor")
 ```
 
 **Implemented systems:**
@@ -925,16 +937,17 @@ Workspace/
 3. **DiggingService:** Authoritative excavation handling (distance, zone unlock, shovel speed/luck, cooldowns, weighted rolls, XP awards, auto-provisioned dig spot).
 4. **CarryingService:** Authoritative carrying and placement management (hand attachment, ownership checks, decoupled inventory retention, placement validation).
 5. **CleaningService:** Authoritative fossil cleaning system (distance validation, carried fossil validation, equipped brush validation, duration calculation, Quality assignment, XP reward, inventory sync, auto-provisioned cleaning station).
-6. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`.
-7. **TDD Test Suite:** Automated unit tests covering all 4 phases, executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
+6. **DNAExtractorService:** Authoritative per-player state machine for DNA extraction (Idle/Processing/OutputReady states, insertion validation, fossil consumption, timer, DNA item generation, manual collection, XP award, auto-provisioned machine).
+7. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`, `MachineController`.
+8. **TDD Test Suite:** Automated unit tests covering all 5 phases (27 tests), executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
 
 **Known limitations & pending tests:**
 - 3D custom models and animations will be added by the user in future updates; code utilizes placeholder models with BillboardGuis and is aligned for seamless asset dropping into `ReplicatedStorage.Assets.Items`.
 - Data persistence is session-based in memory; DataStore integration is scheduled for Phase 9.
-- Cleaned fossils are now verified and ready to be placed in the DNA Extractor (Phase 5).
+- DNA items are now in inventory and ready to be placed in the Incubator (Phase 6).
 - In-game automated tests run on Studio startup via `TestRunner.server.lua`.
 
-**Next recommended task:** Phase 5 — DNA Extractor.
+**Next recommended task:** Phase 6 — Dinosaur Incubator.
 
 ---
 

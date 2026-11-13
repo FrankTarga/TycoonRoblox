@@ -50,12 +50,13 @@ print("[Server] Remotes created.")
 -------------------------------------------------------------------------
 local Services = ServerScriptService.Services
 
-local DataService      = require(Services.DataService)
-local InventoryService = require(Services.InventoryService)
-local PlotService      = require(Services.PlotService)
-local DiggingService   = require(Services.DiggingService)
-local CarryingService  = require(Services.CarryingService)
-local CleaningService  = require(Services.CleaningService)
+local DataService          = require(Services.DataService)
+local InventoryService     = require(Services.InventoryService)
+local PlotService          = require(Services.PlotService)
+local DiggingService       = require(Services.DiggingService)
+local CarryingService      = require(Services.CarryingService)
+local CleaningService      = require(Services.CleaningService)
+local DNAExtractorService  = require(Services.DNAExtractorService)
 
 DataService.init()
 InventoryService.init()
@@ -63,6 +64,7 @@ PlotService.init()
 DiggingService.init()
 CarryingService.init()
 CleaningService.init()
+DNAExtractorService.init()
 
 print("[Server] Services initialized.")
 

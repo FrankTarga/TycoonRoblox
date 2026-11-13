@@ -126,3 +126,4 @@ function CleaningController.init()
 end
 
 return CleaningController
+
