@@ -55,12 +55,14 @@ local InventoryService = require(Services.InventoryService)
 local PlotService      = require(Services.PlotService)
 local DiggingService   = require(Services.DiggingService)
 local CarryingService  = require(Services.CarryingService)
+local CleaningService  = require(Services.CleaningService)
 
 DataService.init()
 InventoryService.init()
 PlotService.init()
 DiggingService.init()
 CarryingService.init()
+CleaningService.init()
 
 print("[Server] Services initialized.")
 

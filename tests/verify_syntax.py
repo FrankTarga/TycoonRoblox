@@ -34,3 +34,4 @@ if all_clean:
     print(f"\nAll {len(lua_files)} Luau files have balanced syntax!")
 else:
     exit(1)
+

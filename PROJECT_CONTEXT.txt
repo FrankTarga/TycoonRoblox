@@ -833,16 +833,16 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
 
 ## 30. CURRENT PROJECT STATUS
 
-**Development stage:** Phase 3 — Inventory and Carrying (Completed).
+**Development stage:** Phase 4 — Fossil Cleaning (Completed).
 
 **Completed phases:**
 - **Phase 1 — Project Structure:** Folder architecture, shared configurations (Rarities, Fossils, Dinosaurs, Zones, Economy, Machines, Equipment), shared modules (Types, ItemUtils, Remotes), server bootstrap (`Main.server.lua`), client bootstrap (`Main.client.lua`), and service stubs.
 - **Phase 2 — Excavation:** Physical excavation spot with ProximityPrompt, authoritative server validation (`DiggingService`), distance check, level/zone unlock check, shovel stats (speed/luck), server-side weighted fossil rolling, cooldown tracking, inventory addition (`InventoryService`), XP/level progression, and client controller (`ExcavationController`).
-- **Phase 3 — Inventory and Carrying (TDD):**
-  - Unit test suite and testing framework (`TestFramework.lua`, `ItemUtils.spec.lua`, `Inventory.spec.lua`, `Carrying.spec.lua`, in-game `TestRunner.server.lua`, and CLI runner `tests/run_tests.py`).
-  - Authoritative Carrying Service (`CarryingService.lua`) managing physical item attachment to character hands, item ownership validation, uncarrying/drop, consumption on machine/cage placement, and placement validation.
-  - Client Carrying Controller (`CarryController.lua`) and Inventory Controller (`InventoryController.lua`) handling item selection, carry/drop requests, and inventory filtering.
-  - Decoupled inventory from carrying: items remain in inventory while carried and are only removed upon successful placement.
+- **Phase 3 — Inventory and Carrying (TDD):** Unit test suite (`TestFramework.lua`, `ItemUtils.spec.lua`, `Inventory.spec.lua`, `Carrying.spec.lua`, in-game `TestRunner.server.lua`, and CLI runner `tests/run_tests.py`), authoritative Carrying Service (`CarryingService.lua`) managing physical item attachment to character hands, item ownership validation, uncarrying/drop, consumption on machine/cage placement, placement validation, and client controllers (`CarryController.lua`, `InventoryController.lua`).
+- **Phase 4 — Fossil Cleaning (TDD):**
+  - Unit test specifications (`Cleaning.spec.lua` and CLI test simulation in `tests/run_tests.py`).
+  - Authoritative Cleaning Service (`CleaningService.lua`): validates station interaction distance, ensures player is carrying an uncleaned fossil, verifies equipped brush, calculates duration scaled by brush speed multiplier, marks `IsCleaned = true`, assigns Quality rating (70-100%), awards XP, triggers level-up check, updates physical visual label, and auto-provisions a physical Cleaning Station in `Workspace.CleaningStations`.
+  - Client Cleaning Controller (`CleaningController.lua`): ProximityPrompt interaction handling on cleaning stations, UX pre-checks, and completion/reward feedback.
 
 **Current Explorer hierarchy:**
 ```
@@ -863,6 +863,7 @@ ReplicatedStorage/
     ItemUtils.spec.lua
     Inventory.spec.lua
     Carrying.spec.lua
+    Cleaning.spec.lua
   Remotes.lua
   RemoteEvents/
     RequestExcavation
@@ -897,6 +898,7 @@ ServerScriptService/
     PlotService.lua
     DiggingService.lua
     CarryingService.lua
+    CleaningService.lua
 
 StarterPlayer/
   StarterPlayerScripts/
@@ -905,6 +907,7 @@ StarterPlayer/
       ExcavationController.lua
       CarryController.lua
       InventoryController.lua
+      CleaningController.lua
 
 StarterGui/
   (Placeholder for future GUI phases)
@@ -912,29 +915,26 @@ StarterGui/
 Workspace/
   DigZones/
     BeginnerExcavationSpot (Auto-provisioned or builder-placed with ProximityPrompt & ZoneID attribute)
+  CleaningStations/
+    BeginnerCleaningStation (Auto-provisioned or builder-placed with ProximityPrompt)
 ```
 
 **Implemented systems:**
 1. **DataService:** In-memory session cache (`getPlayerData`, `setPlayerData`, `initPlayerData`, `removePlayerData`) providing central authoritative data access across services.
 2. **InventoryService:** Authoritative inventory manipulation (`addItem`, `removeItem`, `getInventory`, `getItem`, `hasItem`), broadcasting updates to clients via `InventoryUpdated`.
 3. **DiggingService:** Authoritative excavation handling (distance, zone unlock, shovel speed/luck, cooldowns, weighted rolls, XP awards, auto-provisioned dig spot).
-4. **CarryingService:** Authoritative carrying and placement management:
-   - Validates item ownership before allowing carrying.
-   - Spawns/attaches visual 3D item to character right hand (with support for custom assets in `ReplicatedStorage.Assets.Items` or clean placeholder models with BillboardGui displaying name and rarity).
-   - Keeps items in inventory while carried (no duplication, no loss).
-   - Consumes and removes items from inventory only upon successful placement (`consumeCarriedItem`).
-   - Validates machine and cage placement compatibility.
-   - Handles character death/respawn and player leaving cleanly.
-5. **CarryController & InventoryController:** Client-side controllers for inventory queries, item filtering (Fossils, DNA, Dinosaurs), selecting/toggling carried items, and carrying state events.
-6. **TDD Test Suite:** Automated unit tests covering item generation, compatibility, inventory operations, and carrying/placement rules.
+4. **CarryingService:** Authoritative carrying and placement management (hand attachment, ownership checks, decoupled inventory retention, placement validation).
+5. **CleaningService:** Authoritative fossil cleaning system (distance validation, carried fossil validation, equipped brush validation, duration calculation, Quality assignment, XP reward, inventory sync, auto-provisioned cleaning station).
+6. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`.
+7. **TDD Test Suite:** Automated unit tests covering all 4 phases, executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
 
 **Known limitations & pending tests:**
 - 3D custom models and animations will be added by the user in future updates; code utilizes placeholder models with BillboardGuis and is aligned for seamless asset dropping into `ReplicatedStorage.Assets.Items`.
 - Data persistence is session-based in memory; DataStore integration is scheduled for Phase 9.
-- Machine placement physical trigger (DNA Extractor & Incubator) will be connected in Phases 5 and 6.
+- Cleaned fossils are now verified and ready to be placed in the DNA Extractor (Phase 5).
 - In-game automated tests run on Studio startup via `TestRunner.server.lua`.
 
-**Next recommended task:** Phase 4 — Fossil Cleaning.
+**Next recommended task:** Phase 5 — DNA Extractor.
 
 ---
 

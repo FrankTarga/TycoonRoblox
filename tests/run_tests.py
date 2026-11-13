@@ -289,5 +289,88 @@ runner.test("Carrying owned item succeeds & keeps item in inventory", test_carry
 runner.test("Uncarrying item clears carried state while keeping inventory intact", test_uncarry_retains_item_in_inventory)
 runner.test("Consuming carried item removes it from inventory & clears carry state", test_consume_on_placement_removes_from_inventory)
 
+# -------------------------------------------------------------
+# Fossil Cleaning System Simulation Tests (Phase 4)
+# -------------------------------------------------------------
+print("\n[SUITE] Fossil Cleaning System Simulation (Phase 4)")
+
+class MockCleaningService:
+    def __init__(self, game_server):
+        self.server = game_server
+        self.player_tools = {}
+        self.player_xp = {}
+
+    def set_brush(self, user_id, brush_id):
+        self.player_tools[user_id] = brush_id
+
+    def get_brush(self, user_id):
+        return self.player_tools.get(user_id, "BASIC_BRUSH")
+
+    def clean_carried_fossil(self, user_id):
+        item = self.server.get_carried_item(user_id)
+        if not item:
+            return False, "No item is being carried"
+        if item["ItemType"] != "Fossil":
+            return False, "Only fossils can be cleaned"
+        if item["IsCleaned"]:
+            return False, "Fossil is already cleaned"
+        brush = self.get_brush(user_id)
+        if not brush or brush == "":
+            return False, "No brush equipped"
+
+        item["IsCleaned"] = True
+        item["Quality"] = 85
+        self.player_xp[user_id] = self.player_xp.get(user_id, 0) + 5
+        return True, item
+
+cleaning_service = MockCleaningService(server)
+
+def test_clean_without_item_rejected():
+    success, reason = cleaning_service.clean_carried_fossil(2001)
+    assert success is False
+    assert reason == "No item is being carried"
+
+def test_clean_non_fossil_rejected():
+    fossil = create_fossil_item("TREX_TOOTH")
+    dna = create_dna_item(fossil)
+    server.add_item(2002, dna)
+    server.set_carried_item(2002, dna["ItemUID"])
+    success, reason = cleaning_service.clean_carried_fossil(2002)
+    assert success is False
+    assert reason == "Only fossils can be cleaned"
+
+def test_clean_without_brush_rejected():
+    fossil = create_fossil_item("TREX_TOOTH")
+    server.add_item(2003, fossil)
+    server.set_carried_item(2003, fossil["ItemUID"])
+    cleaning_service.set_brush(2003, "")
+    success, reason = cleaning_service.clean_carried_fossil(2003)
+    assert success is False
+    assert reason == "No brush equipped"
+
+def test_clean_uncleaned_fossil_succeeds_and_awards_xp():
+    fossil = create_fossil_item("TREX_TOOTH")
+    server.add_item(2004, fossil)
+    server.set_carried_item(2004, fossil["ItemUID"])
+    cleaning_service.set_brush(2004, "BASIC_BRUSH")
+    success, cleaned_item = cleaning_service.clean_carried_fossil(2004)
+    assert success is True
+    assert cleaned_item["IsCleaned"] is True
+    assert cleaned_item["Quality"] >= 70
+    assert cleaning_service.player_xp[2004] == 5
+
+def test_clean_already_cleaned_fossil_rejected():
+    # Attempting to clean the same fossil from test above
+    success, reason = cleaning_service.clean_carried_fossil(2004)
+    assert success is False
+    assert reason == "Fossil is already cleaned"
+
+runner.test("Cleaning without carried item rejected", test_clean_without_item_rejected)
+runner.test("Cleaning non-fossil (DNA) rejected", test_clean_non_fossil_rejected)
+runner.test("Cleaning without equipped brush rejected", test_clean_without_brush_rejected)
+runner.test("Cleaning raw fossil succeeds, sets IsCleaned=True and awards 5 XP", test_clean_uncleaned_fossil_succeeds_and_awards_xp)
+runner.test("Cleaning already cleaned fossil rejected", test_clean_already_cleaned_fossil_rejected)
+
 all_passed = runner.summary()
 sys.exit(0 if all_passed else 1)
+

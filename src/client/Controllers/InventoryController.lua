@@ -111,3 +111,4 @@ function InventoryController.init()
 end
 
 return InventoryController
+

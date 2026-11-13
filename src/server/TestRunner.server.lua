@@ -22,17 +22,20 @@ local function runAllSuites()
 
 	local TestFramework = require(TestsFolder:WaitForChild("TestFramework"))
 	local CarryingService = require(ServerScriptService.Services.CarryingService)
+	local CleaningService = require(ServerScriptService.Services.CleaningService)
 
 	-- Register spec files
 	local itemUtilsSpec = require(TestsFolder:WaitForChild("ItemUtils.spec"))
 	local inventorySpec = require(TestsFolder:WaitForChild("Inventory.spec"))
 	local carryingSpec = require(TestsFolder:WaitForChild("Carrying.spec"))
+	local cleaningSpec = require(TestsFolder:WaitForChild("Cleaning.spec"))
 
 	TestFramework.clear()
 
 	itemUtilsSpec()
 	inventorySpec()
 	carryingSpec(CarryingService)
+	cleaningSpec(CarryingService, CleaningService)
 
 	local results = TestFramework.runAll()
 
@@ -73,3 +76,4 @@ if RunService:IsStudio() then
 		runAllSuites()
 	end)
 end
+
