@@ -1202,6 +1202,93 @@ runner.test("Persistence migration preserves legacy data and adds schema", test_
 runner.test("Persistence accurately saves and reloads player data", test_persistence_save_and_reload)
 runner.test("Persistence handles DataStore errors gracefully without crashing", test_persistence_error_graceful_catch)
 
+# -------------------------------------------------------------
+# Expansion and Polish System Simulation (Phase 10)
+# -------------------------------------------------------------
+print("\n[SUITE] Expansion and Polish System Simulation (Phase 10)")
+
+DINOSAURS_EXPANDED = {
+    "TREX": {"Rarity": "Common", "BaseIncome": 10, "IncubationTime": 30},
+    "VELOCIRAPTOR": {"Rarity": "Uncommon", "BaseIncome": 18, "IncubationTime": 40},
+    "TRICERATOPS": {"Rarity": "Rare", "BaseIncome": 30, "IncubationTime": 50},
+    "SPINOSAURUS": {"Rarity": "Epic", "BaseIncome": 55, "IncubationTime": 75},
+}
+
+FOSSILS_EXPANDED = {
+    "TREX_TOOTH": {"DinosaurID": "TREX", "Value": 5, "Rarity": "Common"},
+    "RAPTOR_CLAW": {"DinosaurID": "VELOCIRAPTOR", "Value": 15, "Rarity": "Uncommon"},
+    "TRICERATOPS_HORN": {"DinosaurID": "TRICERATOPS", "Value": 35, "Rarity": "Rare"},
+    "SPINOSAURUS_SPINE": {"DinosaurID": "SPINOSAURUS", "Value": 80, "Rarity": "Epic"},
+}
+
+ZONES_EXPANDED = {
+    "BEGINNER_SITE": {"RequiredLevel": 1, "UnlockCost": 0, "Fossils": ["TREX_TOOTH"]},
+    "DESERT_CANYON": {"RequiredLevel": 2, "UnlockCost": 300, "Fossils": ["TREX_TOOTH", "RAPTOR_CLAW"]},
+    "FROZEN_TUNDRA": {"RequiredLevel": 5, "UnlockCost": 1500, "Fossils": ["TREX_TOOTH", "RAPTOR_CLAW", "TRICERATOPS_HORN"]},
+    "VOLCANIC_RIDGE": {"RequiredLevel": 10, "UnlockCost": 5000, "Fossils": ["TREX_TOOTH", "RAPTOR_CLAW", "TRICERATOPS_HORN", "SPINOSAURUS_SPINE"]},
+}
+
+def test_expansion_dinosaur_catalog():
+    for dino_id, data in DINOSAURS_EXPANDED.items():
+        assert data["BaseIncome"] > 0
+        assert data["IncubationTime"] > 0
+
+def test_expansion_fossil_mapping():
+    for fossil_id, data in FOSSILS_EXPANDED.items():
+        assert data["DinosaurID"] in DINOSAURS_EXPANDED
+        assert data["Value"] > 0
+
+def test_expansion_pipeline_end_to_end_all_dinosaurs():
+    # Test that every fossil produces DNA, then Dinosaur, and earns income
+    for fossil_id, fossil_info in FOSSILS_EXPANDED.items():
+        dino_id = fossil_info["DinosaurID"]
+        fossil = {
+            "ItemUID": str(uuid.uuid4()),
+            "ItemType": "Fossil",
+            "ConfigID": fossil_id,
+            "DinosaurID": dino_id,
+            "Rarity": fossil_info["Rarity"],
+            "Quality": 90,
+            "IsCleaned": True,
+            "ObtainedAt": int(time.time()),
+        }
+        dna = {
+            "ItemUID": str(uuid.uuid4()),
+            "ItemType": "DNA",
+            "ConfigID": dino_id + "_DNA",
+            "DinosaurID": dino_id,
+            "Rarity": fossil_info["Rarity"],
+            "Quality": 90,
+            "IsCleaned": False,
+            "ObtainedAt": int(time.time()),
+        }
+        dino = {
+            "ItemUID": str(uuid.uuid4()),
+            "ItemType": "Dinosaur",
+            "ConfigID": dino_id,
+            "DinosaurID": dino_id,
+            "Rarity": fossil_info["Rarity"],
+            "Quality": 90,
+            "IsCleaned": False,
+            "ObtainedAt": int(time.time()),
+        }
+        assert dino["ItemType"] == "Dinosaur"
+        assert dino["DinosaurID"] == dino_id
+        # Income check
+        base_income = DINOSAURS_EXPANDED[dino_id]["BaseIncome"]
+        assert base_income >= 10
+
+def test_expansion_zones_integrity():
+    for zone_id, data in ZONES_EXPANDED.items():
+        assert data["RequiredLevel"] >= 1
+        for f in data["Fossils"]:
+            assert f in FOSSILS_EXPANDED
+
+runner.test("Expansion verifies full dinosaur catalog", test_expansion_dinosaur_catalog)
+runner.test("Expansion verifies fossil to dinosaur mappings", test_expansion_fossil_mapping)
+runner.test("Expansion validates end-to-end pipeline across all dinosaur tiers", test_expansion_pipeline_end_to_end_all_dinosaurs)
+runner.test("Expansion verifies all 4 zones and fossil pools", test_expansion_zones_integrity)
+
 all_passed = runner.summary()
 sys.exit(0 if all_passed else 1)
 

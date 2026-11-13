@@ -26,14 +26,40 @@ FossilConfig.Fossils: { [string]: FossilInfo } = {
 		Rarity = "Common",
 		DinosaurID = "TREX",
 		Value = 5,
-		Icon = "rbxassetid://0", -- placeholder
+		Icon = "rbxassetid://0",
 		ModelName = "TRexToothModel",
 		Description = "A massive fossilized tooth from a Tyrannosaurus Rex.",
 	},
-	-- Future fossils — add entries here to expand content:
-	-- TREX_CLAW    = { FossilID = "TREX_CLAW",    DinosaurID = "TREX", ... },
-	-- RAPTOR_CLAW  = { FossilID = "RAPTOR_CLAW",  DinosaurID = "VELOCIRAPTOR", ... },
-	-- TRIKE_HORN   = { FossilID = "TRIKE_HORN",   DinosaurID = "TRICERATOPS", ... },
+	RAPTOR_CLAW = {
+		FossilID = "RAPTOR_CLAW",
+		Name = "Velociraptor Claw",
+		Rarity = "Uncommon",
+		DinosaurID = "VELOCIRAPTOR",
+		Value = 15,
+		Icon = "rbxassetid://0",
+		ModelName = "RaptorClawModel",
+		Description = "A sickle-shaped predatory claw from a nimble Velociraptor.",
+	},
+	TRICERATOPS_HORN = {
+		FossilID = "TRICERATOPS_HORN",
+		Name = "Triceratops Horn",
+		Rarity = "Rare",
+		DinosaurID = "TRICERATOPS",
+		Value = 35,
+		Icon = "rbxassetid://0",
+		ModelName = "TriceratopsHornModel",
+		Description = "A formidable brow horn preserved from a giant Triceratops.",
+	},
+	SPINOSAURUS_SPINE = {
+		FossilID = "SPINOSAURUS_SPINE",
+		Name = "Spinosaurus Neural Spine",
+		Rarity = "Epic",
+		DinosaurID = "SPINOSAURUS",
+		Value = 80,
+		Icon = "rbxassetid://0",
+		ModelName = "SpinosaurusSpineModel",
+		Description = "An immense vertebral sail spine from an amphibious super-predator.",
+	},
 }
 
 --- Returns a single fossil definition by ID, or nil.

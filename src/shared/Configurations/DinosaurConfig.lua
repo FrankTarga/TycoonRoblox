@@ -26,14 +26,39 @@ DinosaurConfig.Dinosaurs: { [string]: DinosaurInfo } = {
 		BaseIncome = 10,
 		IncubationTime = 30,
 		ModelName = "TRexModel",
-		Icon = "rbxassetid://0", -- placeholder
+		Icon = "rbxassetid://0",
 		Description = "The king of dinosaurs. Generates steady income.",
 	},
-	-- Future dinosaurs — add entries here to expand content:
-	-- VELOCIRAPTOR = { DinosaurID = "VELOCIRAPTOR", Rarity = "Uncommon", BaseIncome = 18, ... },
-	-- TRICERATOPS  = { DinosaurID = "TRICERATOPS",  Rarity = "Rare",     BaseIncome = 30, ... },
-	-- STEGOSAURUS  = { DinosaurID = "STEGOSAURUS",  Rarity = "Uncommon", BaseIncome = 15, ... },
-	-- SPINOSAURUS  = { DinosaurID = "SPINOSAURUS",  Rarity = "Epic",     BaseIncome = 55, ... },
+	VELOCIRAPTOR = {
+		DinosaurID = "VELOCIRAPTOR",
+		Name = "Velociraptor",
+		Rarity = "Uncommon",
+		BaseIncome = 18,
+		IncubationTime = 40,
+		ModelName = "VelociraptorModel",
+		Icon = "rbxassetid://0",
+		Description = "A swift and cunning hunter with sharp claws.",
+	},
+	TRICERATOPS = {
+		DinosaurID = "TRICERATOPS",
+		Name = "Triceratops",
+		Rarity = "Rare",
+		BaseIncome = 30,
+		IncubationTime = 50,
+		ModelName = "TriceratopsModel",
+		Icon = "rbxassetid://0",
+		Description = "A mighty three-horned herbivore with strong crowd appeal.",
+	},
+	SPINOSAURUS = {
+		DinosaurID = "SPINOSAURUS",
+		Name = "Spinosaurus",
+		Rarity = "Epic",
+		BaseIncome = 55,
+		IncubationTime = 75,
+		ModelName = "SpinosaurusModel",
+		Icon = "rbxassetid://0",
+		Description = "An apex predatory leviathan with an imposing sail.",
+	},
 }
 
 --- Returns a single dinosaur definition by ID, or nil.

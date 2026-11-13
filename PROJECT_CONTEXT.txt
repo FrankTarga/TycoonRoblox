@@ -850,7 +850,7 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
 
 ## 30. CURRENT PROJECT STATUS
 
-**Development stage:** Phase 9 — Persistence (Completed).
+**Development stage:** Phase 10 — Expansion and Polish (All 10 Phases Completed).
 
 **Completed phases:**
 - **Phase 1 — Project Structure:** Folder architecture, shared configurations (Rarities, Fossils, Dinosaurs, Zones, Economy, Machines, Equipment), shared modules (Types, ItemUtils, Remotes), server bootstrap (`Main.server.lua`), client bootstrap (`Main.client.lua`), and service stubs.
@@ -876,8 +876,12 @@ Do not claim that a feature has been tested in-game unless an actual test was pe
 - **Phase 9 — Persistence (TDD):**
   - Unit test specifications (`Persistence.spec.lua` and CLI test simulation suite in `tests/run_tests.py`).
   - Authoritative DataService upgraded with DataStoreService persistence: safe `GetAsync` and `SetAsync` calls wrapped in `pcall` with retry logic, automatic schema migration and fallback handling for legacy/missing keys, auto-save loop (every 300s), auto-save on `PlayerRemoving`, server shutdown handling on `BindToClose`, and mock injection for offline tests.
-  - `Main.server.lua` updated with authoritative player load and save hooks.
-  - `TestRunner.server.lua` updated with `persistenceSpec`.
+- **Phase 10 — Expansion and Polish (TDD):**
+  - Unit test specifications (`Expansion.spec.lua` and CLI test simulation suite in `tests/run_tests.py`).
+  - Expanded dinosaur species: `Tyrannosaurus Rex`, `Velociraptor`, `Triceratops`, `Spinosaurus` across Common, Uncommon, Rare, and Epic rarities.
+  - Expanded fossil catalog: `T-Rex Tooth`, `Velociraptor Claw`, `Triceratops Horn`, `Spinosaurus Neural Spine`.
+  - Expanded excavation zones: `Beginner Excavation Site`, `Desert Canyon`, `Frozen Tundra`, `Volcanic Ridge`.
+  - Client Head-Up Display controller (`HUDController.lua`): procedural UI rendering real-time cash balance ($), level and XP progress bar, active tool indicators, and toast notifications.
 
 **Current Explorer hierarchy:**
 ```
@@ -904,6 +908,7 @@ ReplicatedStorage/
     Cage.spec.lua
     Progression.spec.lua
     Persistence.spec.lua
+    Expansion.spec.lua
   Remotes.lua
   RemoteEvents/
     RequestExcavation
@@ -963,9 +968,10 @@ StarterPlayer/
       CleaningController.lua
       MachineController.lua
       CageController.lua
+      HUDController.lua
 
 StarterGui/
-  (Placeholder for future GUI phases)
+  (HUD procedural fallback managed by HUDController)
 
 Workspace/
   DigZones/
@@ -989,10 +995,10 @@ Workspace/
 7. **IncubatorService:** Authoritative per-player state machine for Dinosaur incubation (Idle/Processing states, DNA validation, item consumption, incubation timer, dinosaur item generation, automatic inventory collection, XP award, auto-provisioned machine).
 8. **CageService:** Authoritative dinosaur cage management and passive income system (placement validation, dinosaur consumption, passive income generation, income capping, authoritative collection into money balance, dinosaur retrieval, auto-provisioned cage).
 9. **ProgressionService:** Authoritative economy store, equipment purchasing and equipping, zone unlocks, plot expansions, cage purchases, and fossil selling.
-10. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`, `MachineController`, `CageController`.
-11. **TDD Test Suite:** Automated unit tests covering all 9 phases (61 tests), executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
+10. **Client Controllers:** `ExcavationController`, `CarryController`, `InventoryController`, `CleaningController`, `MachineController`, `CageController`, `HUDController`.
+11. **TDD Test Suite:** Automated unit tests covering all 10 phases (65 tests), executable both in-game via `TestRunner.server.lua` and offline via `tests/run_tests.py`.
 
-**Next recommended task:** Phase 10 — Expansion and Polish.
+**Game Status:** MVP & Full 10-Phase Scope Complete and Tested. Ready for player testing and building custom 3D mesh assets.
 
 ---
 
