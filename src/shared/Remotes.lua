@@ -34,11 +34,20 @@ Remotes.Events = {
 	RequestPlaceDinosaur = "RequestPlaceDinosaur", -- Client → Server
 	CageUpdated          = "CageUpdated",          -- Server → Client
 
-	-- Economy
+	-- Economy & Progression
 	RequestCollectIncome = "RequestCollectIncome",  -- Client → Server
+	RequestBuyEquipment  = "RequestBuyEquipment",   -- Client → Server
+	RequestEquipItem     = "RequestEquipItem",      -- Client → Server
+	RequestUnlockZone    = "RequestUnlockZone",     -- Client → Server
+	RequestExpandPlot    = "RequestExpandPlot",     -- Client → Server
+	RequestBuyCage       = "RequestBuyCage",        -- Client → Server
+	RequestSellFossil    = "RequestSellFossil",     -- Client → Server
 	MoneyUpdated         = "MoneyUpdated",          -- Server → Client
 	XPUpdated            = "XPUpdated",             -- Server → Client
 	LevelUpdated         = "LevelUpdated",          -- Server → Client
+	EquipmentUpdated     = "EquipmentUpdated",      -- Server → Client
+	ZonesUpdated         = "ZonesUpdated",          -- Server → Client
+	PlotUpdated          = "PlotUpdated",           -- Server → Client
 
 	-- Player Data
 	PlayerDataLoaded = "PlayerDataLoaded",          -- Server → Client (initial sync)

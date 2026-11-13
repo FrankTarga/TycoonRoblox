@@ -31,11 +31,33 @@ EquipmentConfig.Equipment: { [string]: EquipmentInfo } = {
 		LuckBonus = 0,
 		Cost = 0,
 		RequiredLevel = 1,
-		Icon = "rbxassetid://0", -- placeholder
+		Icon = "rbxassetid://0",
 		Description = "A simple shovel for basic excavation.",
 	},
-	-- IRON_SHOVEL   = { EquipmentID = "IRON_SHOVEL",   Type = "Shovel", Tier = 2, ... },
-	-- GOLDEN_SHOVEL = { EquipmentID = "GOLDEN_SHOVEL", Type = "Shovel", Tier = 3, ... },
+	IRON_SHOVEL = {
+		EquipmentID = "IRON_SHOVEL",
+		Name = "Iron Shovel",
+		Type = "Shovel",
+		Tier = 2,
+		SpeedMultiplier = 1.4,
+		LuckBonus = 5,
+		Cost = 250,
+		RequiredLevel = 2,
+		Icon = "rbxassetid://0",
+		Description = "A sturdy iron shovel that digs faster with higher luck.",
+	},
+	GOLDEN_SHOVEL = {
+		EquipmentID = "GOLDEN_SHOVEL",
+		Name = "Golden Shovel",
+		Type = "Shovel",
+		Tier = 3,
+		SpeedMultiplier = 1.8,
+		LuckBonus = 15,
+		Cost = 1000,
+		RequiredLevel = 5,
+		Icon = "rbxassetid://0",
+		Description = "A lavish golden shovel with exceptional speed and luck.",
+	},
 
 	---------- Brushes ----------
 	BASIC_BRUSH = {
@@ -47,11 +69,33 @@ EquipmentConfig.Equipment: { [string]: EquipmentInfo } = {
 		LuckBonus = 0,
 		Cost = 0,
 		RequiredLevel = 1,
-		Icon = "rbxassetid://0", -- placeholder
+		Icon = "rbxassetid://0",
 		Description = "A simple brush for cleaning fossils.",
 	},
-	-- FINE_BRUSH    = { EquipmentID = "FINE_BRUSH",    Type = "Brush", Tier = 2, ... },
-	-- DIAMOND_BRUSH = { EquipmentID = "DIAMOND_BRUSH", Type = "Brush", Tier = 3, ... },
+	FINE_BRUSH = {
+		EquipmentID = "FINE_BRUSH",
+		Name = "Fine Brush",
+		Type = "Brush",
+		Tier = 2,
+		SpeedMultiplier = 1.3,
+		LuckBonus = 5,
+		Cost = 200,
+		RequiredLevel = 2,
+		Icon = "rbxassetid://0",
+		Description = "A delicate fine brush that cleans faster and improves fossil quality.",
+	},
+	DIAMOND_BRUSH = {
+		EquipmentID = "DIAMOND_BRUSH",
+		Name = "Diamond Brush",
+		Type = "Brush",
+		Tier = 3,
+		SpeedMultiplier = 1.7,
+		LuckBonus = 15,
+		Cost = 800,
+		RequiredLevel = 5,
+		Icon = "rbxassetid://0",
+		Description = "A masterwork brush with diamond-coated bristles for pristine fossil restoration.",
+	},
 }
 
 --- Returns a single equipment definition by ID, or nil.

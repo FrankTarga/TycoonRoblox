@@ -905,6 +905,214 @@ runner.test("Collecting income when zero is rejected", test_cage_collect_zero_re
 runner.test("Collecting income adds money and resets pending balance", test_cage_collect_income_adds_money_and_resets)
 runner.test("Retrieving dinosaur returns it to inventory and collects pending income", test_cage_retrieve_dinosaur_returns_to_inventory_and_collects_income)
 
+# -------------------------------------------------------------
+# Economy and Progression System Simulation (Phase 8)
+# -------------------------------------------------------------
+print("\n[SUITE] Economy and Progression System Simulation (Phase 8)")
+
+EQUIPMENT_DATA = {
+    "BASIC_SHOVEL": {"Type": "Shovel", "Tier": 1, "Cost": 0, "RequiredLevel": 1},
+    "IRON_SHOVEL": {"Type": "Shovel", "Tier": 2, "Cost": 250, "RequiredLevel": 2},
+    "GOLDEN_SHOVEL": {"Type": "Shovel", "Tier": 3, "Cost": 1000, "RequiredLevel": 5},
+    "BASIC_BRUSH": {"Type": "Brush", "Tier": 1, "Cost": 0, "RequiredLevel": 1},
+    "FINE_BRUSH": {"Type": "Brush", "Tier": 2, "Cost": 200, "RequiredLevel": 2},
+    "DIAMOND_BRUSH": {"Type": "Brush", "Tier": 3, "Cost": 800, "RequiredLevel": 5},
+}
+
+ZONE_DATA = {
+    "BEGINNER_SITE": {"RequiredLevel": 1, "UnlockCost": 0},
+    "DESERT_CANYON": {"RequiredLevel": 2, "UnlockCost": 300},
+}
+
+class MockProgressionService:
+    def __init__(self, srv):
+        self.server = srv
+        self.players = {}
+
+    def _get_player(self, user_id):
+        if user_id not in self.players:
+            self.players[user_id] = {
+                "money": 500,
+                "level": 2,
+                "owned_equipment": ["BASIC_SHOVEL", "BASIC_BRUSH"],
+                "active_shovel": "BASIC_SHOVEL",
+                "active_brush": "BASIC_BRUSH",
+                "unlocked_zones": ["BEGINNER_SITE"],
+                "expansion_level": 1,
+                "cage_count": 1,
+            }
+        return self.players[user_id]
+
+    def buy_equipment(self, user_id, equip_id):
+        p = self._get_player(user_id)
+        if equip_id not in EQUIPMENT_DATA:
+            return False, "Equipment not found"
+        info = EQUIPMENT_DATA[equip_id]
+        if equip_id in p["owned_equipment"]:
+            return False, "Equipment already owned"
+        if p["level"] < info["RequiredLevel"]:
+            return False, "Level requirement not met"
+        if p["money"] < info["Cost"]:
+            return False, "Insufficient funds"
+        p["money"] -= info["Cost"]
+        p["owned_equipment"].append(equip_id)
+        if info["Type"] == "Shovel":
+            p["active_shovel"] = equip_id
+        elif info["Type"] == "Brush":
+            p["active_brush"] = equip_id
+        return True, "Equipment purchased"
+
+    def equip_item(self, user_id, equip_id):
+        p = self._get_player(user_id)
+        if equip_id not in EQUIPMENT_DATA:
+            return False, "Equipment not found"
+        if equip_id not in p["owned_equipment"]:
+            return False, "Equipment not owned"
+        info = EQUIPMENT_DATA[equip_id]
+        if info["Type"] == "Shovel":
+            p["active_shovel"] = equip_id
+        elif info["Type"] == "Brush":
+            p["active_brush"] = equip_id
+        return True, "Equipped"
+
+    def unlock_zone(self, user_id, zone_id):
+        p = self._get_player(user_id)
+        if zone_id not in ZONE_DATA:
+            return False, "Zone not found"
+        info = ZONE_DATA[zone_id]
+        if zone_id in p["unlocked_zones"]:
+            return False, "Zone already unlocked"
+        if p["level"] < info["RequiredLevel"]:
+            return False, "Level requirement not met"
+        if p["money"] < info["UnlockCost"]:
+            return False, "Insufficient funds"
+        p["money"] -= info["UnlockCost"]
+        p["unlocked_zones"].append(zone_id)
+        return True, "Zone unlocked"
+
+    def expand_plot(self, user_id):
+        p = self._get_player(user_id)
+        cost = int(500 * (2.0 ** (p["expansion_level"] - 1)))
+        if p["money"] < cost:
+            return False, "Insufficient funds"
+        p["money"] -= cost
+        p["expansion_level"] += 1
+        return True, "Plot expanded"
+
+    def buy_cage(self, user_id):
+        p = self._get_player(user_id)
+        cost = 200
+        if p["money"] < cost:
+            return False, "Insufficient funds"
+        p["money"] -= cost
+        p["cage_count"] += 1
+        return True, "Cage purchased"
+
+    def sell_fossil(self, user_id, item_uid):
+        inv = self.server.get_inventory(user_id)
+        item = None
+        for it in inv:
+            if it["ItemUID"] == item_uid:
+                item = it
+                break
+        if not item:
+            return False, "Item not found in inventory"
+        if item["ItemType"] != "Fossil":
+            return False, "Only fossils can be sold"
+        earned = max(1, int(10 * 0.5))  # 5
+        self.server.remove_item(user_id, item_uid)
+        p = self._get_player(user_id)
+        p["money"] += earned
+        return True, earned
+
+progression = MockProgressionService(server)
+
+def test_prog_reject_unknown_equipment():
+    s, r = progression.buy_equipment(6001, "UNKNOWN_TOOL")
+    assert s is False
+    assert r == "Equipment not found"
+
+def test_prog_reject_already_owned_equipment():
+    s, r = progression.buy_equipment(6001, "BASIC_SHOVEL")
+    assert s is False
+    assert r == "Equipment already owned"
+
+def test_prog_reject_underleveled_equipment():
+    # GOLDEN_SHOVEL requires level 5, user 6001 is level 2
+    s, r = progression.buy_equipment(6001, "GOLDEN_SHOVEL")
+    assert s is False
+    assert r == "Level requirement not met"
+
+def test_prog_reject_unaffordable_equipment():
+    p = progression._get_player(6002)
+    p["money"] = 50
+    s, r = progression.buy_equipment(6002, "IRON_SHOVEL")
+    assert s is False
+    assert r == "Insufficient funds"
+
+def test_prog_buy_equipment_deducts_money_adds_to_owned_and_equips():
+    p = progression._get_player(6003)
+    p["money"] = 500
+    s, _ = progression.buy_equipment(6003, "IRON_SHOVEL")
+    assert s is True
+    assert p["money"] == 250
+    assert "IRON_SHOVEL" in p["owned_equipment"]
+    assert p["active_shovel"] == "IRON_SHOVEL"
+
+def test_prog_equip_owned_and_reject_unowned():
+    s1, r1 = progression.equip_item(6003, "DIAMOND_BRUSH")
+    assert s1 is False
+    assert r1 == "Equipment not owned"
+    s2, _ = progression.equip_item(6003, "BASIC_BRUSH")
+    assert s2 is True
+
+def test_prog_unlock_zone_deducts_money_and_adds_to_unlocked():
+    p = progression._get_player(6004)
+    p["money"] = 1000
+    p["level"] = 3
+    s, _ = progression.unlock_zone(6004, "DESERT_CANYON")
+    assert s is True
+    assert p["money"] == 700  # 1000 - 300
+    assert "DESERT_CANYON" in p["unlocked_zones"]
+
+def test_prog_expand_plot_deducts_cost_and_increments_level():
+    p = progression._get_player(6005)
+    p["money"] = 1000
+    s, _ = progression.expand_plot(6005)
+    assert s is True
+    assert p["money"] == 500  # 1000 - 500
+    assert p["expansion_level"] == 2
+
+def test_prog_buy_cage_deducts_cost_and_increments_count():
+    p = progression._get_player(6006)
+    p["money"] = 500
+    s, _ = progression.buy_cage(6006)
+    assert s is True
+    assert p["money"] == 300  # 500 - 200
+    assert p["cage_count"] == 2
+
+def test_prog_sell_fossil_removes_from_inventory_and_awards_cash():
+    fossil = create_fossil_item("TREX_TOOTH")
+    server.add_item(6007, fossil)
+    p = progression._get_player(6007)
+    start_money = p["money"]
+    s, earned = progression.sell_fossil(6007, fossil["ItemUID"])
+    assert s is True
+    assert earned == 5
+    assert len(server.get_inventory(6007)) == 0
+    assert p["money"] == start_money + 5
+
+runner.test("Progression rejects unknown equipment", test_prog_reject_unknown_equipment)
+runner.test("Progression rejects already owned equipment", test_prog_reject_already_owned_equipment)
+runner.test("Progression rejects under-leveled equipment purchase", test_prog_reject_underleveled_equipment)
+runner.test("Progression rejects equipment purchase with insufficient funds", test_prog_reject_unaffordable_equipment)
+runner.test("Progression buys equipment, deducts money, adds to owned, and auto-equips", test_prog_buy_equipment_deducts_money_adds_to_owned_and_equips)
+runner.test("Progression equips owned tools and rejects unowned tools", test_prog_equip_owned_and_reject_unowned)
+runner.test("Progression unlocks excavation zone, deducts funds, and adds to UnlockedZones", test_prog_unlock_zone_deducts_money_and_adds_to_unlocked)
+runner.test("Progression expands plot, deducting scaled cost and incrementing level", test_prog_expand_plot_deducts_cost_and_increments_level)
+runner.test("Progression buys cages, deducting cost and incrementing cage count", test_prog_buy_cage_deducts_cost_and_increments_count)
+runner.test("Progression sells fossils from inventory for cash", test_prog_sell_fossil_removes_from_inventory_and_awards_cash)
+
 all_passed = runner.summary()
 sys.exit(0 if all_passed else 1)
 

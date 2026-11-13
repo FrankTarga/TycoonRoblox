@@ -38,10 +38,24 @@ ZoneConfig.Zones: { [string]: ZoneInfo } = {
 		ExcavationCooldown = 5,
 		Description = "A basic excavation site for beginners. Simple fossils await.",
 	},
-	-- Future zones — add entries here:
-	-- DESERT_CANYON  = { ZoneID = "DESERT_CANYON",  RequiredLevel = 5,  UnlockCost = 500,  ... },
-	-- FROZEN_TUNDRA  = { ZoneID = "FROZEN_TUNDRA",  RequiredLevel = 10, UnlockCost = 2000, ... },
-	-- VOLCANIC_RIDGE = { ZoneID = "VOLCANIC_RIDGE", RequiredLevel = 20, UnlockCost = 8000, ... },
+	DESERT_CANYON = {
+		ZoneID = "DESERT_CANYON",
+		Name = "Desert Canyon",
+		RequiredLevel = 2,
+		UnlockCost = 300,
+		AvailableFossils = { "TREX_TOOTH" },
+		RarityMultipliers = {
+			Common    = 0.8,
+			Uncommon  = 1.4,
+			Rare      = 1.5,
+			Epic      = 1.2,
+			Legendary = 1.0,
+			Mythic    = 1.0,
+		},
+		LuckMultiplier = 1.25,
+		ExcavationCooldown = 4,
+		Description = "An arid desert canyon where wind reveals ancient fossil deposits.",
+	},
 }
 
 --- Returns a single zone definition by ID, or nil.
