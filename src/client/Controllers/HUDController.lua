@@ -282,3 +282,4 @@ function HUDController.init()
 end
 
 return HUDController
+
